@@ -1,0 +1,1630 @@
+{
+	"folders": [
+		{
+			"name": "ACTGame",
+			"path": "."
+		},
+		{
+			"name": "UE5",
+			"path": "D:\\UnrealEngine\\Engine_5_6_0"
+		}
+	],
+	"settings": {
+		"typescript.tsc.autoDetect": "off",
+		"npm.autoDetect": "off",
+		"terminal.integrated.env.windows": {
+			"PATH": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Binaries\\ThirdParty\\DotNet\\8.0.300\\win-x64;${env:PATH}",
+			"DOTNET_ROOT": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Binaries\\ThirdParty\\DotNet\\8.0.300\\win-x64",
+			"DOTNET_HOST_PATH": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Binaries\\ThirdParty\\DotNet\\8.0.300\\win-x64\\dotnet.exe",
+			"DOTNET_MULTILEVEL_LOOKUP": "0",
+			"DOTNET_ROLL_FORWARD": "LatestMajor"
+        },
+        "clangd.arguments": [
+            "-header-insertion=iwyu",
+            "-header-insertion-decorators=true",
+            "-all-scopes-completion=true",
+            "-limit-results=100",
+            "-background-index=true",
+            "-limit-references=2000",
+            "-completion-style=detailed",
+            "-function-arg-placeholders=true",
+            "-log=info"
+        ],
+        "clangd.path": "c:\\Program Files\\LLVM\\bin\\clangd.exe",
+        "clangd.detectExtensionConflicts": false,
+        "files.associations": {
+            "*.clangd": "yaml",
+            "*.clang-format": "yaml",
+            "*.clang-tidy": "yaml"
+        },
+        "workbench.colorCustomizations": {
+            "editorInlayHint.foreground": "#a2a2a2c0",
+            "editorInlayHint.background": "#00000000"
+        },
+        "editor.suggestFontSize": 0
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-vscode.cpptools",
+			"ms-dotnettools.csharp"
+		]
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "ACTGame Win64 Debug Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 Debug Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame Win64 Debug Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 Debug Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 DebugGame Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 DebugGame Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame Win64 DebugGame Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 DebugGame Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 Development Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 Development Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame Win64 Development Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 Development Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 Test Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"Test",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 Test Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"Test",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame Win64 Test Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 Test Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"Test",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 Shipping Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"Shipping",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 Shipping Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"Shipping",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame Win64 Shipping Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Win64 Shipping Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"Win64",
+					"Shipping",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac Debug Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac Debug Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame Mac Debug Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac Debug Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac DebugGame Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac DebugGame Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame Mac DebugGame Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac DebugGame Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac Development Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac Development Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame Mac Development Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac Development Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac Test Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"Test",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac Test Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"Test",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame Mac Test Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac Test Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"Test",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac Shipping Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"Shipping",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac Shipping Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"Shipping",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame Mac Shipping Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame Mac Shipping Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"Mac",
+					"Shipping",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS Debug Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS Debug Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame IOS Debug Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS Debug Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS DebugGame Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS DebugGame Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame IOS DebugGame Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS DebugGame Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS Development Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS Development Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame IOS Development Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS Development Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS Test Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"Test",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS Test Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"Test",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame IOS Test Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS Test Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"Test",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS Shipping Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"Shipping",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS Shipping Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"Shipping",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame IOS Shipping Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame IOS Shipping Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"IOS",
+					"Shipping",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS Debug Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS Debug Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame TVOS Debug Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS Debug Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS DebugGame Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS DebugGame Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame TVOS DebugGame Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS DebugGame Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS Development Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS Development Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame TVOS Development Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS Development Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS Test Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"Test",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS Test Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"Test",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame TVOS Test Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS Test Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"Test",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS Shipping Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"Shipping",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS Shipping Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"Shipping",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGame TVOS Shipping Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGame TVOS Shipping Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGame",
+					"TVOS",
+					"Shipping",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Win64 Debug Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGameEditor",
+					"Win64",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Win64 Debug Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGameEditor",
+					"Win64",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGameEditor Win64 Debug Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Win64 Debug Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGameEditor",
+					"Win64",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Win64 DebugGame Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGameEditor",
+					"Win64",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Win64 DebugGame Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGameEditor",
+					"Win64",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGameEditor Win64 DebugGame Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Win64 DebugGame Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGameEditor",
+					"Win64",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Win64 Development Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGameEditor",
+					"Win64",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Win64 Development Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGameEditor",
+					"Win64",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGameEditor Win64 Development Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Win64 Development Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGameEditor",
+					"Win64",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Mac Debug Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGameEditor",
+					"Mac",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Mac Debug Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGameEditor",
+					"Mac",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGameEditor Mac Debug Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Mac Debug Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGameEditor",
+					"Mac",
+					"Debug",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Mac DebugGame Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGameEditor",
+					"Mac",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Mac DebugGame Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGameEditor",
+					"Mac",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGameEditor Mac DebugGame Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Mac DebugGame Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGameEditor",
+					"Mac",
+					"DebugGame",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Mac Development Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGameEditor",
+					"Mac",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Mac Development Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"ACTGameEditor",
+					"Mac",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"ACTGameEditor Mac Development Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"label": "ACTGameEditor Mac Development Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"ACTGameEditor",
+					"Mac",
+					"Development",
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			}
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Launch ACTGame (Debug)",
+				"request": "launch",
+				"program": "D:\\UnrealEngine\\Projects\\ACTGame\\Binaries\\Win64\\ACTGame-Win64-Debug.exe",
+				"preLaunchTask": "ACTGame Win64 Debug Build",
+				"args": [
+				],
+				"cwd": "D:\\UnrealEngine\\Engine_5_6_0",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"Z:\\UEVFS\\ACTGame": "D:\\UnrealEngine\\Projects\\ACTGame",
+					"Z:\\UEVFS\\Root": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"name": "Launch ACTGame (DebugGame)",
+				"request": "launch",
+				"program": "D:\\UnrealEngine\\Projects\\ACTGame\\Binaries\\Win64\\ACTGame-Win64-DebugGame.exe",
+				"preLaunchTask": "ACTGame Win64 DebugGame Build",
+				"args": [
+				],
+				"cwd": "D:\\UnrealEngine\\Engine_5_6_0",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"Z:\\UEVFS\\ACTGame": "D:\\UnrealEngine\\Projects\\ACTGame",
+					"Z:\\UEVFS\\Root": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"name": "Launch ACTGame (Development)",
+				"request": "launch",
+				"program": "D:\\UnrealEngine\\Projects\\ACTGame\\Binaries\\Win64\\ACTGame.exe",
+				"preLaunchTask": "ACTGame Win64 Development Build",
+				"args": [
+				],
+				"cwd": "D:\\UnrealEngine\\Engine_5_6_0",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"Z:\\UEVFS\\ACTGame": "D:\\UnrealEngine\\Projects\\ACTGame",
+					"Z:\\UEVFS\\Root": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"name": "Launch ACTGame (Test)",
+				"request": "launch",
+				"program": "D:\\UnrealEngine\\Projects\\ACTGame\\Binaries\\Win64\\ACTGame-Win64-Test.exe",
+				"preLaunchTask": "ACTGame Win64 Test Build",
+				"args": [
+				],
+				"cwd": "D:\\UnrealEngine\\Engine_5_6_0",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"Z:\\UEVFS\\ACTGame": "D:\\UnrealEngine\\Projects\\ACTGame",
+					"Z:\\UEVFS\\Root": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"name": "Launch ACTGame (Shipping)",
+				"request": "launch",
+				"program": "D:\\UnrealEngine\\Projects\\ACTGame\\Binaries\\Win64\\ACTGame-Win64-Shipping.exe",
+				"preLaunchTask": "ACTGame Win64 Shipping Build",
+				"args": [
+				],
+				"cwd": "D:\\UnrealEngine\\Engine_5_6_0",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"Z:\\UEVFS\\ACTGame": "D:\\UnrealEngine\\Projects\\ACTGame",
+					"Z:\\UEVFS\\Root": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"name": "Launch ACTGameEditor (Debug)",
+				"request": "launch",
+				"program": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Binaries\\Win64\\UnrealEditor-Win64-Debug.exe",
+				"preLaunchTask": "ACTGameEditor Win64 Debug Build",
+				"args": [
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject"
+				],
+				"cwd": "D:\\UnrealEngine\\Engine_5_6_0",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"Z:\\UEVFS\\ACTGame": "D:\\UnrealEngine\\Projects\\ACTGame",
+					"Z:\\UEVFS\\Root": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"name": "Launch ACTGameEditor (DebugGame)",
+				"request": "launch",
+				"program": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Binaries\\Win64\\UnrealEditor-Win64-DebugGame.exe",
+				"preLaunchTask": "ACTGameEditor Win64 DebugGame Build",
+				"args": [
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject"
+				],
+				"cwd": "D:\\UnrealEngine\\Engine_5_6_0",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"Z:\\UEVFS\\ACTGame": "D:\\UnrealEngine\\Projects\\ACTGame",
+					"Z:\\UEVFS\\Root": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"name": "Launch ACTGameEditor (Development)",
+				"request": "launch",
+				"program": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+				"preLaunchTask": "ACTGameEditor Win64 Development Build",
+				"args": [
+					"D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject"
+				],
+				"cwd": "D:\\UnrealEngine\\Engine_5_6_0",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"Z:\\UEVFS\\ACTGame": "D:\\UnrealEngine\\Projects\\ACTGame",
+					"Z:\\UEVFS\\Root": "D:\\UnrealEngine\\Engine_5_6_0"
+				}
+			},
+			{
+				"name": "Generate Project Files",
+				"type": "coreclr",
+				"request": "launch",
+				"preLaunchTask": "UnrealBuildTool Win64 Development Build",
+				"program": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Build\\BatchFiles\\RunUBT.bat",
+				"args": [
+					"-projectfiles",
+					"-vscode",
+					"-project=D:\\UnrealEngine\\Projects\\ACTGame\\ACTGame.uproject",
+					"-game",
+					"-engine",
+					"-dotnet"
+				],
+				"env": {
+					"PATH": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Binaries\\ThirdParty\\DotNet\\8.0.300\\win-x64;${env:PATH}",
+					"DOTNET_ROOT": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Binaries\\ThirdParty\\DotNet\\8.0.300\\win-x64",
+					"DOTNET_HOST_PATH": "D:\\UnrealEngine\\Engine_5_6_0\\Engine\\Binaries\\ThirdParty\\DotNet\\8.0.300\\win-x64\\dotnet.exe",
+					"DOTNET_MULTILEVEL_LOOKUP": "0",
+					"DOTNET_ROLL_FORWARD": "LatestMajor"
+				},
+				"console": "integratedTerminal",
+				"stopAtEntry": false,
+				"cwd": "D:\\UnrealEngine\\Engine_5_6_0"
+			}
+		]
+	}
+}

@@ -12,3 +12,9 @@ Saved
 *.suo
 *.xcodeproj
 *.xcworkspace
+Content
+
+Plugins/VisualStudioTools/azure-pipelines
+Plugins/VisualStudioTools/Docs
+Plugins/VisualStudioTools/Intermediate
+Plugins/VisualStudioTools/Scripts
