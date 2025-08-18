@@ -2,6 +2,7 @@
 
 #include "ACTGameEcsScene.h"
 #include <vector>
+#include <string_view>
 
 class ACTGameEcsScene;
 
@@ -12,7 +13,7 @@ public:
     ~ACTGameEcsSceneManager();
 
 public:
-    ACTGameEcsScene* CreateScene();
+    ACTGameEcsScene* CreateScene(std::string_view SceneName);
     /* 销毁之前要调用 */
     void ClearAllScene();
 

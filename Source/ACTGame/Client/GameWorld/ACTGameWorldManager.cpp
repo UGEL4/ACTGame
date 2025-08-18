@@ -1,4 +1,5 @@
 #include "ACTGameWorldManager.h"
+#include "Framework/ECS/Component/ACTGameTransformComponent.h"
 #include "Framework/ECS/Scene/ACTGameEcsScene.h"
 #include "Templates/SharedPointer.h"
 #include "Framework/ECS/Scene/ACTGameEcsSceneManager.h"
@@ -24,7 +25,7 @@ void UACTGameWorldManager::Initialize(FSubsystemCollectionBase& Collection)
     Super::Initialize(Collection);
 
     //创建默认场景
-    SceneManager->CreateScene();
+    SceneManager->CreateScene("MainMenuLevel");
 
     //注册场景创建的回调
     TWeakObjectPtr<UACTGameWorldManager> WeakThis(this);

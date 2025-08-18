@@ -1,4 +1,5 @@
 #pragma once
+#include <string_view>
 
 namespace ACTGame
 {
@@ -29,5 +30,10 @@ struct TransformComponent
     PositionComponent Position;
     RotationComponent Rotation;
     ScaleComponent    Scale;
+};
+
+struct NameComponent
+{
+    std::string_view Name;
 };
 } // namespace ACTGame

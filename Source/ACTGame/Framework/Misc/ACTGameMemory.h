@@ -19,6 +19,26 @@ struct ACTGameMemory
         }
         FMemory::Free(Ptr);
     }
+
 };
 
 } // namespace ACTGame
+
+namespace ACTGameGlobal
+{
+template <typename T, typename... Args>
+T* NewObject(Args&&... args)
+{
+    size_t Size = sizeof(T);
+    void* Ptr   = ACTGame::ACTGameMemory::Malloc(Size);
+    T* Obj      = new (Ptr) T(std::forward<Args>(args)...);
+    return Obj;
+}
+
+template <typename T>
+void DeleteObject(T* Obj)
+{
+    Obj->~T();
+    ACTGame::ACTGameMemory::Free(Obj);
+}
+} // namespace ACTGameGlobal

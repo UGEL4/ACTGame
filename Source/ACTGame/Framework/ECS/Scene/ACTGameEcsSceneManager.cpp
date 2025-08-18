@@ -12,10 +12,9 @@ ACTGameEcsSceneManager::~ACTGameEcsSceneManager()
 {
 }
 
-ACTGameEcsScene* ACTGameEcsSceneManager::CreateScene()
+ACTGameEcsScene* ACTGameEcsSceneManager::CreateScene(std::string_view SceneName)
 {
-    size_t Size               = sizeof(ACTGameEcsScene);
-    ACTGameEcsScene* NewScene = (ACTGameEcsScene*)ACTGame::ACTGameMemory::Malloc(Size);
+    ACTGameEcsScene* NewScene = (ACTGameEcsScene*)ACTGameGlobal::NewObject<ACTGameEcsScene>(SceneName);
     NewScene->Initialize();
     if (!ActiveScene)
     {
@@ -35,7 +34,7 @@ void ACTGameEcsSceneManager::ClearAllScene()
         if (Scene)
         {
             Scene->Deinitialize();
-            ACTGame::ACTGameMemory::Free(Scene);
+            ACTGameGlobal::DeleteObject(Scene);
         }
     }
     ActiveScene = nullptr;

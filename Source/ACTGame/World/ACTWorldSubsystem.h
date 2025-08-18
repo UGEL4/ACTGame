@@ -31,15 +31,9 @@ public:
     virtual void Tick(float DeltaTime) override;
     virtual TStatId GetStatId() const override;
 
-    ACTGameEcsScene* GetGameEcsScene()
-    {
-        return EcsScene.Get();
-    }
 
 public:
-    ACTGameEcsEntity* CreateEntity();
 
 private:
-    TSharedPtr<ACTGameEcsScene> EcsScene;
     UACTGlobalFrameManagerSystem* FrameManagerSystem;
 };

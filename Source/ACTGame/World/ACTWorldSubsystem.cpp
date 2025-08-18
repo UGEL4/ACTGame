@@ -13,7 +13,6 @@
 
 UACTWorldSubsystem::UACTWorldSubsystem()
 {
-    EcsScene = MakeShared<ACTGameEcsScene>();
 }
 
 UACTWorldSubsystem::~UACTWorldSubsystem()
@@ -45,7 +44,6 @@ void UACTWorldSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UACTWorldSubsystem::Deinitialize()
 {
     Super::Deinitialize();
-    EcsScene->Deinitialize();
     FrameManagerSystem = nullptr;
 }
 
@@ -57,10 +55,6 @@ void UACTWorldSubsystem::BeginDestroy()
 void UACTWorldSubsystem::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
-    if (EcsScene != nullptr)
-    {
-        EcsScene->Update(DeltaTime, FrameManagerSystem->GetCurrentFrame());
-    }
 }
 
 TStatId UACTWorldSubsystem::GetStatId() const
@@ -68,7 +62,3 @@ TStatId UACTWorldSubsystem::GetStatId() const
     RETURN_QUICK_DECLARE_CYCLE_STAT(UClassName, STATGROUP_Tickables);
 }
 
-ACTGameEcsEntity* UACTWorldSubsystem::CreateEntity()
-{
-    return EcsScene->CreateEntity();
-}
