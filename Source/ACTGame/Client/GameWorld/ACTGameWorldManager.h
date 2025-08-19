@@ -5,13 +5,11 @@
 #include "Framework/ECS/Scene/ACTGameEcsScene.h"
 #include "Framework/ECS/Scene/ACTGameEcsSceneManager.h"
 #include "Subsystems/GameInstanceSubsystem.h"
-#include "Templates/SharedPointer.h"
 #include "Framework/Event/ACTGameEvent.h"
 #include "Framework/Event/ACTGameEventParam.h"
 #include "ACTGameWorldManager.generated.h"
 
 
-class ACTGameEcsSceneManager;
 class ACTGameEcsScene;
 /**
  * 
@@ -44,6 +42,9 @@ public:
 
 private:
     void OnLogicSceneCreate(ACTGameEcsScene* NewScene);
+
+    UFUNCTION(BlueprintCallable, Category = "ACTGame|World")
+    void StartGame();
 
 private:
     TSharedPtr<ACTGameEcsSceneManager> SceneManager;

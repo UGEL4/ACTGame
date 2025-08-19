@@ -1,9 +1,8 @@
 #include "ACTGameWorldManager.h"
 #include "Framework/ECS/Component/ACTGameTransformComponent.h"
-#include "Framework/ECS/Scene/ACTGameEcsScene.h"
-#include "Templates/SharedPointer.h"
+#include "Framework/ECS/Entity/ACTGameEcsEntity.h"
+#include "Kismet/GameplayStatics.h"
 #include "Framework/ECS/Scene/ACTGameEcsSceneManager.h"
-#include "Framework/ECS/Scene/ACTGameEcsScene.h"
 
 UACTGameWorldManager::UACTGameWorldManager()
 {
@@ -25,7 +24,7 @@ void UACTGameWorldManager::Initialize(FSubsystemCollectionBase& Collection)
     Super::Initialize(Collection);
 
     //创建默认场景
-    SceneManager->CreateScene("MainMenuLevel");
+    //SceneManager->CreateScene("MainMenuLevel");
 
     //注册场景创建的回调
     TWeakObjectPtr<UACTGameWorldManager> WeakThis(this);
@@ -35,7 +34,7 @@ void UACTGameWorldManager::Initialize(FSubsystemCollectionBase& Collection)
 	{
         if (UACTGameWorldManager* ValidThis = WeakThis.Get())
 		{
-            UE_LOG(LogTemp, Warning, TEXT("创建了scene实体: scene:%lld"), (size_t)param.Scene);
+            //UE_LOG(LogTemp, Warning, TEXT("创建了scene实体: scene:%lld"), (size_t)param.Scene);
             ValidThis->OnLogicSceneCreate((ACTGameEcsScene*)param.Scene);
         }
 	});
@@ -68,5 +67,14 @@ void UACTGameWorldManager::PostLoadMap(UWorld* world)
 
 void UACTGameWorldManager::OnLogicSceneCreate(ACTGameEcsScene* NewScene)
 {
+    ACTGame::NameComponent& comp = NewScene->GetSceneEntity()->GetComponent<ACTGame::NameComponent>();
+    FName SceneName = comp.Name.data();
+    UGameplayStatics::OpenLevel(GetGameInstance()->GetWorld(), SceneName);
+    UE_LOG(LogTemp, Warning, TEXT("创建了scene实体: scene:%lld name:%s"), (size_t)NewScene, *SceneName.ToString());
+}
 
+void UACTGameWorldManager::StartGame()
+{
+    //UGameplayStatics::OpenLevel(GetGameInstance()->GetWorld(), TEXT("Lvl_ThirdPerson"));
+    ACTGameEcsScene* NewScene = SceneManager->CreateScene("Lvl_ThirdPerson");
 }
