@@ -17,6 +17,7 @@ class ACTGAME_API UACTGameInstance : public UGameInstance
 	
 public:
 	virtual void Init() override;
+    virtual void Shutdown() override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ActionType")
 	TArray<FPrimaryAssetType> AssetTypeList;

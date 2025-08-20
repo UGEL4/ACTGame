@@ -41,4 +41,17 @@ void DeleteObject(T* Obj)
     Obj->~T();
     ACTGame::ACTGameMemory::Free(Obj);
 }
+
+
+struct DefaultDeleter
+{
+    template <typename T>
+    void operator()(T* Ptr)
+    {
+        if (Ptr != nullptr)
+        {
+            DeleteObject(Ptr);
+        }
+    }
+};
 } // namespace ACTGameGlobal
