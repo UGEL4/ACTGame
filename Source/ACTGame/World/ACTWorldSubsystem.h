@@ -4,17 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
-#include "Templates/SharedPointer.h"
-#include "entity/fwd.hpp"
 #include "ACTWorldSubsystem.generated.h"
 
 /**
  * 
  */
-
-class ACTGameEcsScene;
-class UACTGlobalFrameManagerSystem;
-class ACTGameEcsEntity;
 
 UCLASS()
 class ACTGAME_API UACTWorldSubsystem : public UTickableWorldSubsystem
@@ -31,9 +25,4 @@ public:
     virtual void Tick(float DeltaTime) override;
     virtual TStatId GetStatId() const override;
 
-
-public:
-
-private:
-    UACTGlobalFrameManagerSystem* FrameManagerSystem;
 };

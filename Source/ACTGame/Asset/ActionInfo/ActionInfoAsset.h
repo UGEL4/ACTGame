@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Asset/ACTGameDataAssetBase.h"
-#include "Framework/Game/Command/ActionCommand.h"
+#include "Asset/Command/ActionCommand.h"
 #include "ActionInfoAsset.generated.h"
 
 /**

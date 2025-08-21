@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include "ACTGameFrameManager.h"
 #include "Framework/ECS/Scene/ACTGameEcsSceneManager.h"
 #include "Framework/Interface/ILogService.h"
 #include "Misc/ACTGameMemory.h"
@@ -34,5 +35,22 @@ public:
 
 private:
     std::shared_ptr<ACTGameEcsSceneManager> SceneManager;
+
+/**************************************************************************************/
+public:
+    void SetGameFrameRate(std::int32_t FrameRate)
+    {
+        GameFrameRate = FrameRate;
+    }
+
+    std::int32_t GetGameFrameRate() const { return GameFrameRate; }
+
+    const ACTGameFrameManager& GetFrameManager() const { return FrameManager; }
+
+private:
+    void GameLoop(float DeltaTime, std::int64_t Frame);
+    std::int32_t GameFrameRate{60};
+    ACTGameFrameManager FrameManager;
+    /**************************************************************************************/
 };
 }

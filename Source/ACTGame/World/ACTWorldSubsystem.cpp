@@ -2,7 +2,6 @@
 
 
 #include "World/ACTWorldSubsystem.h"
-#include "ACTGlobalFrameManagerSystem.h"
 #include "Engine/World.h"
 #include "Engine/GameInstance.h"
 #include "Framework/ECS/Component/ACTGameTransformComponent.h"
@@ -31,7 +30,6 @@ void UACTWorldSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
 
-    FrameManagerSystem = GetWorld()->GetGameInstance()->GetSubsystem<UACTGlobalFrameManagerSystem>();
     //EcsScene->Initialize();
     //ACTGameEcsEntity* DefaultEntity = CreateEntity();
     //DefaultEntity->AddComponent<ACTGame::PositionComponent>(0.f, 0.f, 0.f);
@@ -44,7 +42,6 @@ void UACTWorldSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UACTWorldSubsystem::Deinitialize()
 {
     Super::Deinitialize();
-    FrameManagerSystem = nullptr;
 }
 
 void UACTWorldSubsystem::BeginDestroy()

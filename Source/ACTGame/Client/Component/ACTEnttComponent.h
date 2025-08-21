@@ -15,6 +15,10 @@ public:
     
     virtual void BeginPlay() override;
 
+    ACTGameEcsEntity* GetEntity() const
+    {
+        return Entity;
+    }
 private:
     ACTGameEcsEntity* Entity;
 };

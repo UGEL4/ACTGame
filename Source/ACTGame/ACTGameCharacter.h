@@ -11,6 +11,7 @@ class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
 struct FInputActionValue;
+class UACTEnttComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -92,5 +93,15 @@ public:
 
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+protected:
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Entt)
+    UACTEnttComponent* EnttComponent;
+public:
+    UACTEnttComponent* GetEnttComponent() const { return EnttComponent;}
+
+protected:
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Entt)
+    class UACTInputProcessComponent* InputProcessComponent;
 };
 

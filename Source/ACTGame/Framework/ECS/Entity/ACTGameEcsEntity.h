@@ -31,6 +31,12 @@ public:
         return Scene->Registry.get<T>(Handle);
     }
 
+    template <typename T>
+    T* TryGetComponent()
+    {
+        return Scene->Registry.try_get<T>(Handle);
+    }
+
 private:
     ACTGameEcsScene* Scene{ nullptr };
     entt::entity Handle {static_cast<entt::entity>(0)};

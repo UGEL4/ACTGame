@@ -40,3 +40,11 @@ void ACTGameEcsSceneManager::ClearAllScene()
     ActiveScene = nullptr;
     SceneList.clear();
 }
+
+void ACTGameEcsSceneManager::Update(float DeltaTime, std::int64_t Frame)
+{
+    if (ActiveScene)
+    {
+        ActiveScene->Update(DeltaTime, Frame);
+    }
+}

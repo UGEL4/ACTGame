@@ -8,7 +8,18 @@
 #include "Framework/Event/ACTGameEvent.h"
 #include "Framework/Event/ACTGameEventParam.h"
 #include "ACTGameWorldManager.generated.h"
+#include "UObject/ObjectMacros.h"
 
+USTRUCT()
+struct FSpawnCharacterEventParam
+{
+    GENERATED_BODY();
+
+    ACTGameEcsEntity* Entity;
+};
+
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCreateCharacter, const FSpawnCharacterEventParam&, EventData);
 
 class ACTGameEcsScene;
 /**
@@ -48,5 +59,15 @@ private:
 
 private:
     ACTGame::EventHandler<ACTGame::SceneCreatedParam> SceneCreatedCallbackHandler;
+    ACTGame::EventHandler<ACTGame::EntityCreatedParam> EntityCreatedCallbackHandler;
 
+///////////////////////////game loop /////////////////////////
+private:
+    bool GameLoop(float DeltaTime);
+    FTSTicker::FDelegateHandle GameLoopTickerHandle;
+///////////////////////////game loop /////////////////////////
+
+public:
+    UPROPERTY(BlueprintAssignable)
+    FCreateCharacter OnCreateCharacter;
 };

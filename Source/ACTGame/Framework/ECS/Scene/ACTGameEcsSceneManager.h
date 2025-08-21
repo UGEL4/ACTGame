@@ -18,6 +18,8 @@ public:
     void ClearAllScene();
 
     ACTGameEcsScene* GetCurrentActiveScene() const { return ActiveScene; }
+
+    void Update(float DeltaTime, std::int64_t Frame);
 private:
     std::vector<ACTGameEcsScene*> SceneList;
     ACTGameEcsScene* ActiveScene{ nullptr };
