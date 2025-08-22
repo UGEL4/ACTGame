@@ -10,6 +10,7 @@ ACTGameEcsSceneManager::ACTGameEcsSceneManager()
 
 ACTGameEcsSceneManager::~ACTGameEcsSceneManager()
 {
+    int a = 0;
 }
 
 ACTGameEcsScene* ACTGameEcsSceneManager::CreateScene(std::string_view SceneName)

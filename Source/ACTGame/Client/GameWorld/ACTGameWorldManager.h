@@ -4,18 +4,24 @@
 #include "CoreMinimal.h"
 #include "Framework/ECS/Scene/ACTGameEcsScene.h"
 #include "Framework/ECS/Scene/ACTGameEcsSceneManager.h"
+#include "Math/MathFwd.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Framework/Event/ACTGameEvent.h"
 #include "Framework/Event/ACTGameEventParam.h"
 #include "ACTGameWorldManager.generated.h"
-#include "UObject/ObjectMacros.h"
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FSpawnCharacterEventParam
 {
     GENERATED_BODY();
 
     ACTGameEcsEntity* Entity;
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+    FVector SpawnLocation;
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+    FRotator SpawnRotation;
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+    class APlayerController* PlayerController;
 };
 
 

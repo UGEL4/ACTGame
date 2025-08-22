@@ -14,6 +14,7 @@ public:
     ACTGameInstance& operator=(const ACTGameInstance&) = delete;
 private:
     ACTGameInstance() = default;
+    ~ACTGameInstance();
 public:
     static ACTGameInstance& Get()
     {
@@ -34,7 +35,7 @@ public:
     ACTGameEcsSceneManager *GetSceneManager() const { return SceneManager.get(); }
 
 private:
-    std::shared_ptr<ACTGameEcsSceneManager> SceneManager;
+    std::shared_ptr<ACTGameEcsSceneManager> SceneManager {nullptr};
 
 /**************************************************************************************/
 public:
@@ -46,6 +47,7 @@ public:
     std::int32_t GetGameFrameRate() const { return GameFrameRate; }
 
     const ACTGameFrameManager& GetFrameManager() const { return FrameManager; }
+    ACTGameFrameManager& GetFrameManager() { return FrameManager; }
 
 private:
     void GameLoop(float DeltaTime, std::int64_t Frame);

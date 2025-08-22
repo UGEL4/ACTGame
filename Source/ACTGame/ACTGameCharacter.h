@@ -94,7 +94,7 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
-protected:
+public:
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Entt)
     UACTEnttComponent* EnttComponent;
 public:

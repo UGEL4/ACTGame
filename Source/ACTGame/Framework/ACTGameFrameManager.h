@@ -5,6 +5,7 @@
 struct ACTGameFrameManager
 {
 public:
+    void Reset();
     void Tick(float DeltaTime);
     std::int64_t GetCurrentFrame() const { return CurrentFrame; }
     void SetTickCallback(std::function<void(float, std::int64_t)> callback)

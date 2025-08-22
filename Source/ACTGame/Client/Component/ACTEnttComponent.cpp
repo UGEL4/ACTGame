@@ -15,6 +15,7 @@ UACTEnttComponent::~UACTEnttComponent()
 
 void UACTEnttComponent::BeginPlay()
 {
+    Super::BeginPlay();
     // UWorld* world                = GetWorld();
     // UACTWorldSubsystem* ACTWorld = world->GetSubsystem<UACTWorldSubsystem>();
     // Entity = ACTWorld->CreateEntity();

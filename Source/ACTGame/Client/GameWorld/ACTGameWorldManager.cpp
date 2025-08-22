@@ -1,12 +1,19 @@
 #include "ACTGameWorldManager.h"
+#include "ACTGameCharacter.h"
 #include "ACTGameInstance.h"
 #include "Framework/ACTGameGameInstance.h"
 #include "Framework/ECS/Component/ACTGameTransformComponent.h"
 #include "Framework/ECS/Entity/ACTGameEcsEntity.h"
 #include "Framework/Event/ACTGameEventParam.h"
+#include "GameFramework/GameModeBase.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerStart.h"
 #include "Kismet/GameplayStatics.h"
 #include "Framework/ECS/Scene/ACTGameEcsSceneManager.h"
 #include "Engine/World.h"
+#include "Math/MathFwd.h"
+#include "UObject/UObjectGlobals.h"
+#include "Client/Component/ACTEnttComponent.h"
 
 UACTGameWorldManager::UACTGameWorldManager()
 {
@@ -56,11 +63,27 @@ void UACTGameWorldManager::Initialize(FSubsystemCollectionBase &Collection)
         {
             if (UACTGameWorldManager *ValidThis = WeakThis.Get())
             {
-                // UE_LOG(LogTemp, Warning, TEXT("创建了scene实体: scene:%lld"), (size_t)param.Scene);
-                //ValidThis->OnLogicSceneCreate((ACTGameEcsScene *)param.Scene);
-                FSpawnCharacterEventParam Param;
-                Param.Entity = (ACTGameEcsEntity*)param.Entity;
-                ValidThis->OnCreateCharacter.Broadcast(Param);
+                UWorld* world           = ValidThis->GetGameInstance()->GetWorld();
+                AGameModeBase* GameMode = world->GetAuthGameMode();
+                APlayerController* PC   = world->GetFirstPlayerController();
+                FRotator Rotation(0, 0, 0);
+                FVector Location(0, 0, 0);
+                if (GameMode && PC)
+                {
+                    APlayerStart* PS = Cast<APlayerStart>(GameMode->FindPlayerStart(PC));
+                    if (PS)
+                    {
+                        Rotation = PS->GetActorRotation();
+                        Location = PS->GetActorLocation();
+                    }
+                }
+                UClass* Class = LoadClass<AACTGameCharacter>(nullptr, TEXT("/Game/ThirdPerson/Blueprints/BP_ThirdPersonCharacter.BP_ThirdPersonCharacter_C"));
+                if (Class)
+                {
+                    AACTGameCharacter* Character = world->SpawnActor<AACTGameCharacter>(Class, Location, Rotation);
+                    Character->EnttComponent->SetEntity((ACTGameEcsEntity*)param.Entity);
+                    PC->Possess(Character);
+                }
             }
         });
 
@@ -115,5 +138,7 @@ void UACTGameWorldManager::StartGame()
 
 bool UACTGameWorldManager::GameLoop(float DeltaTime)
 {
+    //游戏逻辑循环更新的入口FrameManager.Tick -> GameInstance.GameLoop
+    ACTGame::ACTGameInstance::Get().GetFrameManager().Tick(DeltaTime);
     return true;
 }

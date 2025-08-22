@@ -19,6 +19,11 @@ public:
     {
         return Entity;
     }
+
+    void SetEntity(ACTGameEcsEntity* _Entity)
+    {
+        this->Entity = _Entity;
+    }
 private:
     ACTGameEcsEntity* Entity;
 };

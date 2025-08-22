@@ -5,11 +5,17 @@
 
 namespace ACTGame
 {
+    ACTGameInstance::~ACTGameInstance()
+    {
+        int a = 0;
+    }
+
     void ACTGameInstance::Init()
     {
         ACTGameEcsSceneManager* ECSSceneManager = ACTGameGlobal::NewObject<ACTGameEcsSceneManager>();
         SceneManager = std::shared_ptr<ACTGameEcsSceneManager>(ECSSceneManager, ACTGameGlobal::DefaultDeleter());
-
+        
+        FrameManager.Reset();
         FrameManager.SetGameFrameRate(GameFrameRate);
         FrameManager.SetTickCallback(std::bind(&ACTGameInstance::GameLoop, this, std::placeholders::_1, std::placeholders::_2));
     }
@@ -17,6 +23,7 @@ namespace ACTGame
     void ACTGameInstance::Shutdown()
     {
         SceneManager->ClearAllScene();
+        SceneManager.reset();
     }
 
     void ACTGameInstance::SetLogger(std::unique_ptr<ILogService, ACTGameGlobal::DefaultDeleter> logger)
