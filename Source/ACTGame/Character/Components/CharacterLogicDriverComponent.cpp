@@ -30,6 +30,8 @@ void UCharacterLogicDriverComponent::BeginPlay()
     auto ch                 = Cast<AACTGameCharacter>(GetOwner());
     InputToCommandComponent = ch->GetInputToCommandComponent();
     ActionLogicComponent    = ch->GetActionLogicComponent();
+    MovementComponent       = ch->GetCharacterMovementComponent();
+    //MovementComponent->PrimaryComponentTick.bCanEverTick = false;
 }
 
 // Called every frame
@@ -45,6 +47,7 @@ void UCharacterLogicDriverComponent::TickComponent(float DeltaTime, ELevelTick T
 
 		InputToCommandComponent->TickLogic(CurrentLogicFrame);
 		ActionLogicComponent->TickLogic(CurrentLogicFrame);
+        MovementComponent->TickComponent(FixedDeltaTime, TickType, &MovementComponent->PrimaryComponentTick);
 	}
 }
 

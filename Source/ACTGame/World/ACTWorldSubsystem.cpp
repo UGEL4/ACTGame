@@ -78,7 +78,7 @@ void UACTWorldSubsystem::Tick(float DeltaTime)
     {
         AccumulateTime -= FixedDeltaTime;
         CurrentLogicFrame++;
-        RunLogicFrame();
+        //RunLogicFrame();
     }
 }
 

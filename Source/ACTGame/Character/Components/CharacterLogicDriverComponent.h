@@ -32,5 +32,6 @@ private:
 private:
 	class UInputToCommandComponent* InputToCommandComponent;
 	class UActionLogicComponent* ActionLogicComponent;
+    class UCharacterMovementComponent* MovementComponent;
 	
 };

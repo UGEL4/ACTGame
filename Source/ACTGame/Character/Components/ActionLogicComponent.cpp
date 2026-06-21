@@ -27,6 +27,7 @@ void UActionLogicComponent::BeginPlay()
     CurrentLogicFrame = 0;
     CurrentActionFrameIndex = 0;
     RootMotionMove = FVector::ZeroVector;
+    CurrentAction = nullptr;
 }
 
 // Called every frame
@@ -109,6 +110,11 @@ void UActionLogicComponent::ChangeAction(const FName& ActionId)
     }
     // Debug
     FActionInfo* LastAction = CurrentAction;
+    FString LastActionName;
+    if (LastAction)
+    {
+        LastActionName = LastAction->Name.ToString();
+    }
 
     CurrentAction           = FoundAction;
     CurrentActionFrameIndex = 0;
@@ -120,9 +126,9 @@ void UActionLogicComponent::ChangeAction(const FName& ActionId)
 
     if (GEngine)
     {
-        if (LastAction)
+        if (!LastActionName.IsEmpty())
         {
-            GEngine->AddOnScreenDebugMessage(1, 0.5, FColor::Blue, FString::Printf(TEXT("ChangeAction: Last:%s, Current:%s"), *LastAction->Name.ToString(), *CurrentAction->Name.ToString()));
+            GEngine->AddOnScreenDebugMessage(1, 0.5, FColor::Blue, FString::Printf(TEXT("ChangeAction: Last:%s, Current:%s"), *LastActionName, *CurrentAction->Name.ToString()));
         }
         else
         {

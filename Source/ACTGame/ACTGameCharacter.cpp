@@ -56,7 +56,7 @@ AACTGameCharacter::AACTGameCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 
-    // CharacterLogicDriverComponent = CreateDefaultSubobject<UCharacterLogicDriverComponent>(TEXT("CharacterLogicDriverComponent"));
+    CharacterLogicDriverComponent = CreateDefaultSubobject<UCharacterLogicDriverComponent>(TEXT("CharacterLogicDriverComponent"));
     InputToCommandComponent       = CreateDefaultSubobject<UInputToCommandComponent>(TEXT("InputToCommandComponent"));
     ActionLogicComponent          = CreateDefaultSubobject<UActionLogicComponent>(TEXT("ActionLogicComponent"));
 }
@@ -76,6 +76,11 @@ void AACTGameCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AACTGameCharacter::Look);
+
+		// ButtonX
+        EnhancedInputComponent->BindAction(ButtonXAction, ETriggerEvent::Started, this, &AACTGameCharacter::OnButtonX);
+		// ButtonY
+        EnhancedInputComponent->BindAction(ButtonYAction, ETriggerEvent::Started, this, &AACTGameCharacter::OnButtonY);
 	}
 	else
 	{
@@ -85,31 +90,39 @@ void AACTGameCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 void AACTGameCharacter::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 
-	// if (ActionLogicComponent != nullptr && InputToCommandComponent != nullptr)
-	// {
-	// 	InputToCommandComponent->AddTickPrerequisiteComponent(FrameComponent);
-	// 	ActionLogicComponent->AddTickPrerequisiteComponent(InputToCommandComponent);
-	// }
+    if (ActionLogicComponent != nullptr && InputToCommandComponent != nullptr)
+    {
+        // InputToCommandComponent->AddTickPrerequisiteComponent(FrameComponent);
+        ActionLogicComponent->AddTickPrerequisiteComponent(InputToCommandComponent);
+    }
+    if (auto Move = GetCharacterMovementComponent())
+    {
+        Move->Deactivate();
+        if (ActionLogicComponent)
+        {
+            //Move->AddTickPrerequisiteComponent(ActionLogicComponent);
+        }
+    }
 
 	//GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
 	//GetCharacterMovement()->Deactivate();
 
-	if (auto LogicWorld = GetWorld()->GetSubsystem<UACTWorldSubsystem>())
+	/*if (auto LogicWorld = GetWorld()->GetSubsystem<UACTWorldSubsystem>())
 	{
 		LogicWorld->RegisterCharacter(this, IsPlayer);
-	}
+	}*/
 }
 
 void AACTGameCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
 	
-	if (auto LogicWorld = GetWorld()->GetSubsystem<UACTWorldSubsystem>())
+	/*if (auto LogicWorld = GetWorld()->GetSubsystem<UACTWorldSubsystem>())
 	{
 		LogicWorld->UnregisterCharacter(this, IsPlayer);
-	}
+	}*/
 }
 
 void AACTGameCharacter::Move(const FInputActionValue& Value)
@@ -221,4 +234,20 @@ void AACTGameCharacter::PrepareMovementForLogicFrame(int64 FrameNumber)
 FLogicMovementIntent AACTGameCharacter::GetMovementIntent() const
 {
 	return FLogicMovementIntent();
+}
+
+void AACTGameCharacter::OnButtonX()
+{
+	if (InputToCommandComponent)
+	{
+        InputToCommandComponent->TryAddInput(EKeyMap::ButtonWest);
+	}
+}
+
+void AACTGameCharacter::OnButtonY()
+{
+    if (InputToCommandComponent)
+    {
+        InputToCommandComponent->TryAddInput(EKeyMap::ButtonNouth);
+    }
 }

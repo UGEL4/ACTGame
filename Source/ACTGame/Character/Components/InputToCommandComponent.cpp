@@ -32,7 +32,7 @@ void UInputToCommandComponent::TickLogic(int64 CurrentFrame)
     UpdateCommand();
     if (PendingCooldown)
     {
-        NonDirectCooldown = (int32)CurrentFrame + NonDirectCooldown;
+        NonDirectCooldown = (int32)CurrentFrame + NonDirectionInputCooldown;
         PendingCooldown   = false;
     }
 }

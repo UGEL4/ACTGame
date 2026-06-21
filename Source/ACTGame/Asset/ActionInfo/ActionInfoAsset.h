@@ -20,6 +20,18 @@ struct FActionFrameData
 	// FGameplayTagContainer CancelTags;
 };
 
+USTRUCT(BlueprintType)
+struct FActionAnimationData
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation Montage")
+    class UAnimMontage* Montage;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation Montage")
+    bool UseMontage;
+};
+
 /**
  * 
  */
@@ -35,6 +47,9 @@ public:
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info")
 	FName ActionName;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+    FActionAnimationData AnimData;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info")
 	TArray<FActionCommand> Commands;

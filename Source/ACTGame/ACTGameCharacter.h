@@ -52,6 +52,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
 	UInputAction* MouseLookAction;
 
+	/** ButtonX Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	UInputAction* ButtonXAction;
+
+	/** ButtonY Input Action */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	UInputAction* ButtonYAction;
+
 public:
 
 	/** Constructor */
@@ -73,6 +81,9 @@ protected:
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
+
+	void OnButtonX();
+    void OnButtonY();
 
 public:
 
@@ -101,14 +112,14 @@ public:
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
 protected:
-	// class UCharacterLogicDriverComponent* CharacterLogicDriverComponent;
+	class UCharacterLogicDriverComponent* CharacterLogicDriverComponent;
 	class UInputToCommandComponent* InputToCommandComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	class UActionLogicComponent* ActionLogicComponent;
 
 public:
-	// FORCEINLINE class UCharacterLogicDriverComponent* GetCharacterLogicDriverComponent() const { return CharacterLogicDriverComponent; }
+	FORCEINLINE class UCharacterLogicDriverComponent* GetCharacterLogicDriverComponent() const { return CharacterLogicDriverComponent; }
 
 public:
 	virtual void TickLogic(int64 CurrentFrame) override {};
