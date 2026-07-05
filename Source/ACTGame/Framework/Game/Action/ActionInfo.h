@@ -9,6 +9,14 @@
 #include "Asset/ActionInfo/RootMotionAsset.h"
 #include "ActionInfo.generated.h"
 
+struct ActionFrame
+{
+    float AnimKeyFrame{ 0.0 };
+    int LoopFrame{ 1 };
+    TArray<CancelTag> CancelTags;
+    ActionFrame* NextFrame{ nullptr };
+};
+
 USTRUCT(BlueprintType)
 struct FActionInfo
 {

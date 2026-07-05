@@ -39,3 +39,17 @@ struct FBeCancelledTag
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     int32 Priority = 0;
 };
+
+struct CancelTag
+{
+    FName Tag{};
+    int32 FixPriority{ 0 };
+};
+
+struct CancelData
+{
+    TArray<FName> Tags;
+    TArray<CancelTag> TempCancelTags;
+    int16 FixPriority{ 0 };
+    int16 StartFrame{ 0 };
+};
