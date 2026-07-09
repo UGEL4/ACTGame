@@ -18,6 +18,15 @@ struct FActionFrameData
 
 	// UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	// FGameplayTagContainer CancelTags;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    float AnimKeyFrame{ 0.0 };
+
+    int LoopFrame{ 1 };
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    TArray<FCancelTag> CancelTags;
+
+    int NextFrameIndex{ -1 };
 };
 
 USTRUCT(BlueprintType)
