@@ -1,0 +1,40 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "e:\\unrealengine\\projects\\actgame\\plugins\\test\\testeditor\\source\\testeditor\\private\\testeditoreditormodetoolkit.cpp",
+        "ProvidedModule": "",
+        "PCH": "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "e:\\unrealengine\\projects\\actgame\\plugins\\test\\testeditor\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\testeditor\\definitions.testeditor.h",
+            "e:\\unrealengine\\projects\\actgame\\plugins\\test\\testeditor\\source\\testeditor\\public\\testeditoreditormodetoolkit.h",
+            "e:\\unrealengine\\projects\\actgame\\plugins\\test\\testeditor\\source\\testeditor\\public\\testeditoreditormode.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\editor\\unrealed\\public\\tools\\uedmode.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\unrealed\\uht\\uedmode.generated.h",
+            "e:\\unrealengine\\projects\\actgame\\plugins\\test\\testeditor\\intermediate\\build\\win64\\unrealeditor\\inc\\testeditor\\uht\\testeditoreditormode.generated.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\engine\\classes\\engine\\selection.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\editor\\unrealed\\public\\selection.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\typedelementframework\\public\\elements\\framework\\typedelementlist.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\typedelementframework\\public\\elements\\framework\\typedelementcounter.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\typedelementframework\\uht\\typedelementcounter.generated.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\typedelementruntime\\public\\elements\\framework\\typedelementselectionset.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\typedelementruntime\\public\\elements\\framework\\typedelementinterfacecustomization.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\typedelementruntime\\public\\elements\\framework\\typedelementlistobjectutil.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\typedelementruntime\\public\\elements\\interfaces\\typedelementselectioninterface.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\typedelementframework\\public\\elements\\framework\\typedelementlistproxy.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\typedelementframework\\uht\\typedelementlistproxy.generated.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\typedelementruntime\\uht\\typedelementselectioninterface.generated.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\typedelementruntime\\uht\\typedelementselectionset.generated.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\unrealed\\uht\\selection.generated.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\editor\\unrealed\\public\\editormodemanager.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\slate\\public\\widgets\\layout\\swidgetswitcher.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\editor\\unrealed\\public\\edmode.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\editor\\unrealed\\public\\editormoderegistry.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\editor\\unrealed\\public\\tools\\legacyedmodewidgethelpers.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\editor\\unrealed\\public\\tools\\legacyedmodeinterfaces.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\unrealed\\uht\\legacyedmodeinterfaces.generated.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\unrealed\\uht\\legacyedmodewidgethelpers.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

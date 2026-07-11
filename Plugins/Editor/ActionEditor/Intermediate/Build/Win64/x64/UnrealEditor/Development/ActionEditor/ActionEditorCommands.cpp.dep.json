@@ -1,0 +1,15 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "e:\\unrealengine\\projects\\actgame\\plugins\\editor\\actioneditor\\source\\actioneditor\\private\\actioneditorcommands.cpp",
+        "ProvidedModule": "",
+        "PCH": "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "e:\\unrealengine\\projects\\actgame\\plugins\\editor\\actioneditor\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\actioneditor\\definitions.actioneditor.h",
+            "e:\\unrealengine\\projects\\actgame\\plugins\\editor\\actioneditor\\source\\actioneditor\\public\\actioneditorcommands.h",
+            "e:\\unrealengine\\projects\\actgame\\plugins\\editor\\actioneditor\\source\\actioneditor\\public\\actioneditorstyle.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

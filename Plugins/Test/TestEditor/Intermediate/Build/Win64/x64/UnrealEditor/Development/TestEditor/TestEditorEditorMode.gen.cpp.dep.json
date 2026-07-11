@@ -1,0 +1,17 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "e:\\unrealengine\\projects\\actgame\\plugins\\test\\testeditor\\intermediate\\build\\win64\\unrealeditor\\inc\\testeditor\\uht\\testeditoreditormode.gen.cpp",
+        "ProvidedModule": "",
+        "PCH": "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "e:\\unrealengine\\projects\\actgame\\plugins\\test\\testeditor\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\testeditor\\definitions.testeditor.h",
+            "e:\\unrealengine\\projects\\actgame\\plugins\\test\\testeditor\\source\\testeditor\\public\\testeditoreditormode.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\editor\\unrealed\\public\\tools\\uedmode.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\unrealed\\uht\\uedmode.generated.h",
+            "e:\\unrealengine\\projects\\actgame\\plugins\\test\\testeditor\\intermediate\\build\\win64\\unrealeditor\\inc\\testeditor\\uht\\testeditoreditormode.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

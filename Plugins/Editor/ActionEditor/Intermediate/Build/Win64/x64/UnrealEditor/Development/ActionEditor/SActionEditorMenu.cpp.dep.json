@@ -1,0 +1,24 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "e:\\unrealengine\\projects\\actgame\\plugins\\editor\\actioneditor\\source\\actioneditor\\private\\sactioneditormenu.cpp",
+        "ProvidedModule": "",
+        "PCH": "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "e:\\unrealengine\\projects\\actgame\\plugins\\editor\\actioneditor\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\actioneditor\\definitions.actioneditor.h",
+            "e:\\unrealengine\\projects\\actgame\\plugins\\editor\\actioneditor\\source\\actioneditor\\public\\sactioneditormenu.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\editor\\unrealed\\public\\filehelpers.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\editor\\unrealed\\public\\packagetools.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\unrealed\\uht\\packagetools.generated.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\developer\\sourcecontrol\\public\\isourcecontrolprovider.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\developer\\sourcecontrol\\public\\isourcecontrolchangelist.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\developer\\sourcecontrol\\public\\isourcecontrolchangeliststate.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\developer\\sourcecontrol\\public\\isourcecontrolstate.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\developer\\sourcecontrol\\public\\isourcecontroloperation.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\developer\\sourcecontrol\\public\\sourcecontrolresultinfo.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\unrealed\\uht\\filehelpers.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

@@ -1,0 +1,14 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "e:\\unrealengine\\projects\\actgame\\plugins\\test\\testeditor\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\testeditor\\permoduleinline.gen.cpp",
+        "ProvidedModule": "",
+        "PCH": "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "e:\\unrealengine\\projects\\actgame\\plugins\\test\\testeditor\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\testeditor\\definitions.testeditor.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\core\\public\\hal\\permoduleinline.inl"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

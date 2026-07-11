@@ -1,0 +1,25 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "e:\\unrealengine\\projects\\actgame\\plugins\\editor\\actioneditor\\source\\actioneditor\\private\\actioneditorstyle.cpp",
+        "ProvidedModule": "",
+        "PCH": "e:\\unrealengine\\engine_5_6_0\\engine\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "e:\\unrealengine\\projects\\actgame\\plugins\\editor\\actioneditor\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\actioneditor\\definitions.actioneditor.h",
+            "e:\\unrealengine\\projects\\actgame\\plugins\\editor\\actioneditor\\source\\actioneditor\\public\\actioneditorstyle.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\slatecore\\public\\styling\\slatestyleregistry.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\engine\\public\\slate\\slategameresources.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\projects\\public\\interfaces\\ipluginmanager.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\projects\\public\\plugindescriptor.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\projects\\public\\custombuildsteps.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\projects\\public\\localizationdescriptor.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\projects\\public\\moduledescriptor.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\projects\\public\\plugindisalloweddescriptor.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\projects\\public\\pluginreferencedescriptor.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\projects\\public\\versescope.h",
+            "e:\\unrealengine\\engine_5_6_0\\engine\\source\\runtime\\slatecore\\public\\styling\\slatestylemacros.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}
