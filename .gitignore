@@ -23,6 +23,12 @@
 # Any file in /RawContent dir will be managed by git lfs.
 !/RawContent/**/*
 
+# Pugins
+Plugins/Editor/**/Binaries
+Plugins/Editor/**/Intermediate
+Plugins/Test/**/Binaries
+Plugins/Test/**/Intermediate
+
 # OS/platform generated files.
 
 # Windows
