@@ -66,6 +66,18 @@ void SActionEditor_Sequence::Construct(const FArguments& InArgs)
 		InitParams.PlaybackContext.BindLambda([]() -> UObject* {
 			return GEditor->GetEditorWorldContext().World();
 		});
+		InitParams.ViewParams.UniqueName = "ActionEditor";
+		InitParams.ViewParams.ScrubberStyle = ESequencerScrubberStyle::FrameBlock;
+		InitParams.ViewParams.bShowPlaybackRangeInTimeSlider = true;
+
+		InitParams.HostCapabilities.bSupportsCurveEditor = false;
+		InitParams.HostCapabilities.bSupportsSaveMovieSceneAsset = true;
+		InitParams.HostCapabilities.bSupportsRecording = true;
+		InitParams.HostCapabilities.bSupportsRenderMovie = true;
+		InitParams.HostCapabilities.bSupportsAddFromContentBrowser = true;
+		InitParams.HostCapabilities.bSupportsSidebar = true;
+		InitParams.HostCapabilities.bSupportsViewportSelectability = true;
+
 		// 4. 创建SSequencer实例
 		Sequencer = Module.CreateSequencer(InitParams);
 	}
