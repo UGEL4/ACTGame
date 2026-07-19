@@ -47,8 +47,11 @@ public class ActionEditor : ModuleRules
 				"LevelSequence",  // Required for Level Sequence assets
 				"MovieScene",      // Core movie scene track data
 				"Sequencer",       // The Sequencer UI module itself
-				"MovieSceneTools"  // Optional but helpful tools
-			}
+				"MovieSceneTools",  // Optional but helpful tools
+				"LevelSequenceEditor",
+				"EditorStyle",
+				"LevelEditor",
+            }
 			);
 		
 		

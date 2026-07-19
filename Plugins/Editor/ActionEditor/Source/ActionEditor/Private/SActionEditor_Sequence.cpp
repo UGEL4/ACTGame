@@ -9,6 +9,7 @@
 #include "IAssetTools.h"
 #include "AssetToolsModule.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "LevelEditor.h"
 
 SActionEditor_Sequence::~SActionEditor_Sequence()
 {
@@ -62,6 +63,7 @@ void SActionEditor_Sequence::Construct(const FArguments& InArgs)
 		FSequencerInitParams InitParams;
 		InitParams.RootSequence = CurrentLevelSequence; // 关联你的序列资产
 		InitParams.bEditWithinLevelEditor = false; // 关键：设为false，表示它不依赖于主关卡编辑器
+        InitParams.ToolkitHost            = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor").GetFirstLevelEditor();
 		// ... 根据需要设置其他参数，如回调等
 		InitParams.PlaybackContext.BindLambda([]() -> UObject* {
 			return GEditor->GetEditorWorldContext().World();
@@ -70,7 +72,7 @@ void SActionEditor_Sequence::Construct(const FArguments& InArgs)
 		InitParams.ViewParams.ScrubberStyle = ESequencerScrubberStyle::FrameBlock;
 		InitParams.ViewParams.bShowPlaybackRangeInTimeSlider = true;
 
-		InitParams.HostCapabilities.bSupportsCurveEditor = false;
+		InitParams.HostCapabilities.bSupportsCurveEditor = true;
 		InitParams.HostCapabilities.bSupportsSaveMovieSceneAsset = true;
 		InitParams.HostCapabilities.bSupportsRecording = true;
 		InitParams.HostCapabilities.bSupportsRenderMovie = true;

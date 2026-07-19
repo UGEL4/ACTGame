@@ -27,4 +27,9 @@ private:
 private:
 	TSharedPtr<class FUICommandList> PluginCommands;
 	TSharedRef<SWidget> ConstructToolbar();
+
+////// sequencer tracks
+private:
+    FDelegateHandle CancelTag_TrackEditorHandle;
+    FDelegateHandle ActionInfo_TrackEditorHandle;
 };
