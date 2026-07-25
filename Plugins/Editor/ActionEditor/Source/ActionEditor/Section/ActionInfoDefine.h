@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 //#include "HAL/Platform.h"
@@ -32,4 +32,27 @@ struct FEditorCancelData
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     int32 StartFrame{ 0 };
+};
+
+UENUM(BlueprintType)
+enum class EEditor_KeyMap : uint8
+{
+	NoDir,
+	NoInput,
+	DirInput,
+	ButtonWest,
+	ButtonEast,
+	ButtonNouth,
+	ButtonSouth
+};
+
+USTRUCT(BlueprintType)
+struct FEditorActionCommand
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<EEditor_KeyMap> keySequences;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int ValidInFrameCount;
 };

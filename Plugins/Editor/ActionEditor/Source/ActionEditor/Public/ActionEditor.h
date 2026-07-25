@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -32,4 +32,5 @@ private:
 private:
     FDelegateHandle CancelTag_TrackEditorHandle;
     FDelegateHandle ActionInfo_TrackEditorHandle;
+	FDelegateHandle ActionCommand_TrackEditorHandle;
 };
