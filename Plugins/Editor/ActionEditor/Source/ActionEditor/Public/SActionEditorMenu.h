@@ -8,6 +8,9 @@
 /**
  * 
  */
+
+class SActionEditor_Sequence;
+
 class ACTIONEDITOR_API SActionEditorMenu : public SCompoundWidget
 {
 public:
@@ -20,4 +23,9 @@ public:
 
 public:
 	FReply OnClickOpenEditorLevel();
+    FReply SaveActionAsset();
+    void SetSequencerEditor(TSharedRef<SActionEditor_Sequence> InSequenceWidget);
+
+private:
+    TWeakPtr<SActionEditor_Sequence> SequenceWidget;
 };

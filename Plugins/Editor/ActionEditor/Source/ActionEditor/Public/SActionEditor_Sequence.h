@@ -22,6 +22,8 @@ public:
 	void Construct(const FArguments& InArgs);
 	void OnTabClosed(TSharedRef<SDockTab> ClosedTab);
 
+	void SaveActionAsset();
+
 private:
 	UPROPERTY()
 	class ULevelSequence* CurrentLevelSequence{ nullptr };

@@ -25,4 +25,16 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TArray<FEditorCancelData> CancelDataList;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    FName AutoNextActionId;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    bool KeepPlayingAnimation = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    bool AutoTerminate = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    int32 Priority = 0;
+
 };

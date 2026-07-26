@@ -5,6 +5,7 @@
 
 #include "SlateOptMacros.h"
 #include "Editor/UnrealEd/Public/FileHelpers.h"
+#include "SActionEditor_Sequence.h"
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 void SActionEditorMenu::Construct(const FArguments& InArgs)
@@ -29,6 +30,12 @@ void SActionEditorMenu::Construct(const FArguments& InArgs)
 				[
 					SNew(SButton).Text(FText::FromString(TEXT("打开")))
 					.OnClicked(FOnClicked::CreateSP(this, &SActionEditorMenu::OnClickOpenEditorLevel))
+				]
+				+ SHorizontalBox::Slot()
+				.VAlign(VAlign_Top)
+				[
+					SNew(SButton).Text(FText::FromString(TEXT("保存")))
+					.OnClicked(FOnClicked::CreateSP(this, &SActionEditorMenu::SaveActionAsset))
 				]
 			]
 		]
@@ -58,6 +65,26 @@ FReply SActionEditorMenu::OnClickOpenEditorLevel()
 		FEditorFileUtils::FOnLevelPickingCancelled::CreateLambda(OnCancelledCallback), 
 		false);
 	return FReply::Handled();
+}
+
+FReply SActionEditorMenu::SaveActionAsset()
+{
+    TSharedPtr<SActionEditor_Sequence> Ptr = SequenceWidget.Pin();
+	if (!Ptr.IsValid())
+	{
+        return FReply::Handled();
+	}
+
+	// 保存数据
+    UE_LOG(LogTemp, Warning, TEXT("Save action asset"));
+    Ptr->SaveActionAsset();
+
+	return FReply::Handled();
+}
+
+void SActionEditorMenu::SetSequencerEditor(TSharedRef<SActionEditor_Sequence> InSequenceWidget)
+{
+    SequenceWidget = InSequenceWidget;
 }
 
 END_SLATE_FUNCTION_BUILD_OPTIMIZATION

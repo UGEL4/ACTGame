@@ -10,6 +10,10 @@
 #include "AssetToolsModule.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "LevelEditor.h"
+#include "MovieScene.h"
+#include "../Track/Track_ActionInfo.h"
+#include "../Track/Track_CancelTag.h"
+#include "../Track/ActionCommand/Track_Command.h"
 
 SActionEditor_Sequence::~SActionEditor_Sequence()
 {
@@ -96,6 +100,46 @@ void SActionEditor_Sequence::Construct(const FArguments& InArgs)
 		Sequencer->GetSequencerWidget()
 	];
 	
+}
+
+void SActionEditor_Sequence::SaveActionAsset()
+{
+    if (!Sequencer.IsValid())
+    {
+        return;
+    }
+
+    UMovieScene* MovieScene = Sequencer->GetFocusedMovieSceneSequence()->GetMovieScene();
+    if (!MovieScene)
+    {
+        return;
+    }
+
+    UTrack_ActionInfo* ActionInfoTrak{ nullptr };
+    TArray<UTrack_CancelTag*> CancelTagTracks;
+    UTrack_Command* CommandTrack{ nullptr };
+    auto& Tracks = MovieScene->GetTracks();
+    for (auto Track : Tracks)
+    {
+        if (Track->IsA<UTrack_ActionInfo>())
+        {
+            if (!ActionInfoTrak)
+            {
+                ActionInfoTrak = Cast<UTrack_ActionInfo>(Track);
+            }
+        }
+        else if (Track->IsA<UTrack_CancelTag>())
+        {
+            CancelTagTracks.Add(Cast<UTrack_CancelTag>(Track));
+        }
+        else if (Track->IsA<UTrack_Command>())
+        {
+            if (!CommandTrack)
+            {
+                CommandTrack = Cast<UTrack_Command>(Track);
+            }
+        }
+    }
 }
 
 END_SLATE_FUNCTION_BUILD_OPTIMIZATION

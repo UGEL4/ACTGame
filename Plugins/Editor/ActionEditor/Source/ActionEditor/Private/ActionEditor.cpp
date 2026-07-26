@@ -75,6 +75,10 @@ TSharedRef<SDockTab> FActionEditorModule::OnSpawnPluginTab(const FSpawnTabArgs& 
 		FText::FromString(TEXT("ActionEditor.cpp"))
 		);
 
+	TSharedRef<SActionEditorMenu> MenuWidget          = SNew(SActionEditorMenu);
+    TSharedRef<SActionEditor_Sequence> SequenceWidget = SNew(SActionEditor_Sequence);
+    MenuWidget->SetSequencerEditor(SequenceWidget);
+
 	return SNew(SDockTab)
 		.TabRole(ETabRole::NomadTab)
 		[
@@ -83,12 +87,12 @@ TSharedRef<SDockTab> FActionEditorModule::OnSpawnPluginTab(const FSpawnTabArgs& 
 			+SVerticalBox::Slot()
 			.AutoHeight()
 			[
-				SNew(SActionEditorMenu)
+				MenuWidget
 			]
 			+ SVerticalBox::Slot()
 			.FillHeight(1.0)
 			[
-				SNew(SActionEditor_Sequence)
+				SequenceWidget
 			]
 			// SNew(SBox)
 			// .HAlign(HAlign_Center)
