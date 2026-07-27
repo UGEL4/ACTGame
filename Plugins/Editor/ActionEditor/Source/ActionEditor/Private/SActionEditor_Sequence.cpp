@@ -24,6 +24,7 @@
 #include "Misc/MessageDialog.h"
 #include "DesktopPlatformModule.h"
 #include "FileHelpers.h"
+#include "MovieSceneTimeHelpers.h"
 
 SActionEditor_Sequence::~SActionEditor_Sequence()
 {
@@ -118,73 +119,6 @@ void SActionEditor_Sequence::SaveActionAsset()
     {
         return;
     }
-
-    /*UMovieScene* MovieScene = Sequencer->GetFocusedMovieSceneSequence()->GetMovieScene();
-    if (!MovieScene)
-    {
-        return;
-    }
-
-    UTrack_ActionInfo* ActionInfoTrak{ nullptr };
-	UTrack_CancelTag* CancelTagTrack{ nullptr };
-    UTrack_Command* CommandTrack{ nullptr };
-    auto& Tracks = MovieScene->GetTracks();
-    for (auto Track : Tracks)
-    {
-        if (Track->IsA<UTrack_ActionInfo>())
-        {
-            if (!ActionInfoTrak)
-            {
-                ActionInfoTrak = Cast<UTrack_ActionInfo>(Track);
-            }
-        }
-        else if (Track->IsA<UTrack_CancelTag>())
-        {
-			if (!CancelTagTrack)
-			{
-				CancelTagTrack = Cast<UTrack_CancelTag>(Track);
-			}
-        }
-        else if (Track->IsA<UTrack_Command>())
-        {
-            if (!CommandTrack)
-            {
-                CommandTrack = Cast<UTrack_Command>(Track);
-            }
-        }
-    }
-	if (!ActionInfoTrak)
-	{
-		return;
-	}
-
-	//
-	auto& ActionSections = ActionInfoTrak->GetAllSections();
-	if (ActionSections.Num() == 0)
-	{
-		return;
-	}
-	auto FrameRange = ActionSections[0]->GetTrueRange();
-	auto FrameNumber = FrameRange.GetUpperBoundValue() - FrameRange.GetLowerBoundValue();
-	TArray<FActionFrame> ActionFrames;
-	ActionFrames.SetNum(FrameNumber.Value);
-	{
-		for (auto Section : CancelTagTrack->GetAllSections())
-		{
-			auto Range  = Section->GetTrueRange();
-			auto& Start = Range.GetLowerBoundValue();
-			auto& End   = Range.GetUpperBoundValue();
-			if (Start.Value >= ActionFrames.Num())
-			{
-				continue;
-			}
-			auto CancelTagSection = Cast<USection_CancelTag>(Section);
-			for (int32 i = Start.Value; i <= End.Value; i++)
-			{
-				ActionFrames[i].CancelTags = CancelTagSection->TagList;
-			}
-		}
-	}*/
 	
 	CreateOrEditActionInfoAssetWithDialog([this](UActionInfoAsset* ActionAsset) -> bool {
 		UMovieScene* MovieScene = Sequencer->GetFocusedMovieSceneSequence()->GetMovieScene();
@@ -231,41 +165,39 @@ void SActionEditor_Sequence::SaveActionAsset()
 		{
 			return false;
 		}
-		auto FrameRange  = ActionSections[0]->GetTrueRange();
-		auto TickResolution = Sequencer->GetFocusedTickResolution();
-		auto DisplayRate    = Sequencer->GetFocusedDisplayRate();
-		auto FrameNumber = (FrameRange.GetUpperBoundValue() - FrameRange.GetLowerBoundValue()).Value * (TickResolution / DisplayRate).AsInterval();
-		//MovieScene->GetDisplayRate()
-		TArray<FActionFrame> ActionFrames;
-		ActionFrames.SetNum(FrameNumber);
-		{
-			for (auto Section : CancelTagTrack->GetAllSections())
-			{
-				auto Range = Section->GetTrueRange();
-				auto& Start = Range.GetLowerBoundValue();
-				auto& End = Range.GetUpperBoundValue();
-				if (Start.Value >= ActionFrames.Num())
-				{
-					continue;
-				}
-				auto CancelTagSection = Cast<USection_CancelTag>(Section);
-				for (int32 i = Start.Value; i <= End.Value; i++)
-				{
-					ActionFrames[i].CancelTags = CancelTagSection->TagList;
-				}
-			}
-		}
-		auto ActionInfoSection		= Cast<USection_ActionInfo>(ActionSections[0]);
-		ActionAsset->ActionName		= ActionInfoSection->ActionName;
-		ActionAsset->FrameList		= ActionFrames;
-		ActionAsset->CancelDataList = ActionInfoSection->CancelDataList;
-		if (CommandTrack->GetAllSections().Num() > 0)
-		{
-			auto CommandSection   = Cast<USection_Command>(CommandTrack->GetAllSections()[0]);
-			ActionAsset->Commands = CommandSection->CommandList;
-		}
-		return true;
-	});
+        auto StartFrame  = GetStartFrame(ActionSections[0]);
+        auto EndFrame    = GetEndFrame(ActionSections[0]);
+        auto FrameNumber = EndFrame - StartFrame + 1;
+        TArray<FActionFrame> ActionFrames;
+        ActionFrames.SetNum(FrameNumber);
+        if (CancelTagTrack)
+        {
+            for (auto Section : CancelTagTrack->GetAllSections())
+            {
+                int32 Start = GetStartFrame(Section);
+                int32 End   = GetEndFrame(Section);
+                if (End >= ActionFrames.Num())
+                {
+                    continue;
+                }
+                auto CancelTagSection = Cast<USection_CancelTag>(Section);
+                for (int32 i = Start; i <= End; i++)
+                {
+                    ActionFrames[i].CancelTags = CancelTagSection->TagList;
+                }
+            }
+        }
+        auto ActionInfoSection      = Cast<USection_ActionInfo>(ActionSections[0]);
+        ActionAsset->ActionName     = ActionInfoSection->ActionName;
+        ActionAsset->FrameList      = ActionFrames;
+        ActionAsset->CancelDataList = ActionInfoSection->CancelDataList;
+        if (CommandTrack && CommandTrack->GetAllSections().Num() > 0)
+        {
+            auto CommandSection   = Cast<USection_Command>(CommandTrack->GetAllSections()[0]);
+            ActionAsset->Commands = CommandSection->CommandList;
+        }
+        return true;
+    });
 
 	/*/ 1. 获取 AssetTools 模块
 	FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools");
@@ -454,3 +386,55 @@ bool SActionEditor_Sequence::CreateOrEditActionInfoAssetWithDialog(TFunction<boo
 }
 
 END_SLATE_FUNCTION_BUILD_OPTIMIZATION
+
+int32 SActionEditor_Sequence::GetStartFrame(UMovieSceneSection* Section)
+{
+    if (!Section)
+    {
+        FFrame::KismetExecutionMessage(TEXT("Cannot call GetEndFrame on a null section"), ELogVerbosity::Error);
+        return -1;
+    }
+
+    if (!Section->HasStartFrame())
+    {
+        FFrame::KismetExecutionMessage(TEXT("Section does not have a start frame"), ELogVerbosity::Error);
+        return -1;
+    }
+
+    UMovieScene* MovieScene = Section->GetTypedOuter<UMovieScene>();
+    if (MovieScene)
+    {
+        FFrameRate DisplayRate = MovieScene->GetDisplayRate();
+        return ConvertFrameTime(UE::MovieScene::DiscreteInclusiveLower(Section->GetRange()), MovieScene->GetTickResolution(), DisplayRate).FloorToFrame().Value;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+int32 SActionEditor_Sequence::GetEndFrame(UMovieSceneSection* Section)
+{
+    if (!Section)
+    {
+        FFrame::KismetExecutionMessage(TEXT("Cannot call GetEndFrame on a null section"), ELogVerbosity::Error);
+        return -1;
+    }
+
+    if (!Section->HasEndFrame())
+    {
+        FFrame::KismetExecutionMessage(TEXT("Section does not have an end frame"), ELogVerbosity::Error);
+        return -1;
+    }
+
+    UMovieScene* MovieScene = Section->GetTypedOuter<UMovieScene>();
+    if (MovieScene)
+    {
+        FFrameRate DisplayRate = MovieScene->GetDisplayRate();
+        return ConvertFrameTime(UE::MovieScene::DiscreteExclusiveUpper(Section->GetRange()), MovieScene->GetTickResolution(), DisplayRate).FloorToFrame().Value;
+    }
+    else
+    {
+        return -1;
+    }
+}

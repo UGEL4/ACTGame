@@ -23,7 +23,11 @@ public:
 	void OnTabClosed(TSharedRef<SDockTab> ClosedTab);
 
 	void SaveActionAsset();
+
+private:
 	bool CreateOrEditActionInfoAssetWithDialog(TFunction<bool(class UActionInfoAsset*)> ModifyFunc);
+    int32 GetStartFrame(UMovieSceneSection* Section);
+    int32 GetEndFrame(UMovieSceneSection* Section);
 
 private:
 	UPROPERTY()
