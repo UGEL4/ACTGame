@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "MovieSceneSection.h"
-#include "../ActionInfoDefine.h"
+#include "Framework/Game/Command/ActionCommand.h"
 #include "Section_Command.generated.h"
 
 /**
@@ -21,7 +21,7 @@ public:
 
 public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    TArray<FEditorActionCommand> TagList;
+    TArray<FActionCommand> CommandList;
 
 public:
 #if WITH_EDITOR

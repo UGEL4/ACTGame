@@ -23,6 +23,7 @@ public:
 	void OnTabClosed(TSharedRef<SDockTab> ClosedTab);
 
 	void SaveActionAsset();
+	bool CreateOrEditActionInfoAssetWithDialog(TFunction<bool(class UActionInfoAsset*)> ModifyFunc);
 
 private:
 	UPROPERTY()

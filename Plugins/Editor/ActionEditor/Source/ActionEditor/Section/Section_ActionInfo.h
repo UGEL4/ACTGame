@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "MovieSceneSection.h"
 #include "ActionInfoDefine.h"
+#include "Framework/Game/Action/CancelTag.h"
 #include "Section_ActionInfo.generated.h"
 /**
  * 
@@ -23,7 +24,7 @@ public:
     FName ActionName;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    TArray<FEditorCancelData> CancelDataList;
+    TArray<FCancelData> CancelDataList;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     FName AutoNextActionId;

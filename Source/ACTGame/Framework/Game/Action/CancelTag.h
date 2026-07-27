@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Containers/Array.h"
 #include "CoreMinimal.h"
@@ -9,7 +9,7 @@
 #include "CancelTag.generated.h"
 
 USTRUCT(BlueprintType)
-struct FCancelTag
+struct ACTGAME_API FCancelTag
 {
     GENERATED_BODY()
 
@@ -40,16 +40,17 @@ struct FBeCancelledTag
     int32 Priority = 0;
 };
 
-struct CancelTag
+USTRUCT(BlueprintType)
+struct ACTGAME_API FCancelData
 {
-    FName Tag{};
-    int32 FixPriority{ 0 };
-};
+    GENERATED_BODY()
 
-struct CancelData
-{
+    UPROPERTY(EditAnywhere)
     TArray<FName> Tags;
-    TArray<CancelTag> TempCancelTags;
+
+    UPROPERTY(EditAnywhere)
     int16 FixPriority{ 0 };
+
+    UPROPERTY(EditAnywhere)
     int16 StartFrame{ 0 };
 };

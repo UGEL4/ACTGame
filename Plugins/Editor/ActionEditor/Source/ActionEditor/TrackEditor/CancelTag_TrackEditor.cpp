@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "CancelTag_TrackEditor.h"
 #include "ISequencer.h"
@@ -49,11 +49,11 @@ const FSlateBrush* FCancelTag_TrackEditor::GetIconBrush() const
 
 void FCancelTag_TrackEditor::BuildAddTrackMenu(FMenuBuilder& MenuBuilder)
 {
-    // Ê¹ÓÃ MenuBuilder Ìí¼ÓÒ»¸ö²Ëµ¥Ïî
+    // ä½¿ç”¨ MenuBuilder æ·»åŠ ä¸€ä¸ªèœå•é¡¹
     MenuBuilder.AddMenuEntry(
     LOCTEXT("AddCancelTagTrack", "CancelTag Track"),
     LOCTEXT("AddCancelTagTrackTooltip", "Adds a new track that defined the cancel tag."),
-    FSlateIcon(), // ¿ÉÒÔÖ¸¶¨Ò»¸öÍ¼±ê
+    FSlateIcon(), // å¯ä»¥æŒ‡å®šä¸€ä¸ªå›¾æ ‡
     FUIAction(
     FExecuteAction::CreateRaw(this, &FCancelTag_TrackEditor::HandleAddTrackMenuEntryExecute),
     FCanExecuteAction::CreateSP(this, &FCancelTag_TrackEditor::CanAddTrack)));
@@ -111,6 +111,21 @@ bool FCancelTag_TrackEditor::CanAddTrack() const
     {
         return SceneSequence->GetMovieScene()->FindTrack<UMovieSceneOutlineTrack>(ObjectBinding) == nullptr;
     }*/
+
+    TSharedPtr<ISequencer> SequencerPtr = GetSequencer();
+    if (!SequencerPtr.IsValid()) return false;
+
+    UMovieScene* MovieScene = SequencerPtr->GetFocusedMovieSceneSequence()->GetMovieScene();
+    if (!MovieScene) return false;
+
+    // å¦‚æžœå·²å­˜åœ¨åˆ™è¿”å›ž falseï¼ŒæŒ‰é’®å˜ç°
+    for (UMovieSceneTrack* Track : MovieScene->GetTracks())
+    {
+        if (Track && Track->IsA<UTrack_CancelTag>())
+        {
+            return false;
+        }
+    }
     return true;
 }
 

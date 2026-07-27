@@ -43,6 +43,7 @@ public class ActionEditor : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+				"ACTGame",
 				// ... add private dependencies that you statically link with here ...	
 				"LevelSequence",  // Required for Level Sequence assets
 				"MovieScene",      // Core movie scene track data

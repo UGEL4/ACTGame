@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -22,7 +22,7 @@ enum class EKeyMap : uint8
  * 
  */
 USTRUCT(BlueprintType)
-struct FActionCommand
+struct ACTGAME_API FActionCommand
 {
 	GENERATED_BODY()
 

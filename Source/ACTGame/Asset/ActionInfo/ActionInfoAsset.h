@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -9,25 +9,8 @@
 #include "RootMotionAsset.h"
 #include "UObject/ObjectMacros.h"
 #include "Framework/Game/Action/CancelTag.h"
+#include "Framework/Game/Action/ActionInfo.h"
 #include "ActionInfoAsset.generated.h"
-
-USTRUCT(BlueprintType)
-struct FActionFrameData
-{
-	GENERATED_BODY()
-
-	// UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	// FGameplayTagContainer CancelTags;
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    float AnimKeyFrame{ 0.0 };
-
-    int LoopFrame{ 1 };
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-    TArray<FCancelTag> CancelTags;
-
-    int NextFrameIndex{ -1 };
-};
 
 USTRUCT(BlueprintType)
 struct FActionAnimationData
@@ -60,11 +43,17 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
     FActionAnimationData AnimData;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Frame")
+    TArray<FActionFrame> FrameList;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info")
 	TArray<FActionCommand> Commands;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
     TArray<FCancelTag> CancelTags;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    TArray<FCancelData> CancelDataList;
 
     // 这个动作可以被哪些动作cancel
     UPROPERTY(EditAnywhere, BlueprintReadOnly)

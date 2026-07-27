@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CancelTag.h"
 #include "CoreMinimal.h"
@@ -9,12 +9,21 @@
 #include "Asset/ActionInfo/RootMotionAsset.h"
 #include "ActionInfo.generated.h"
 
-struct ActionFrame
+USTRUCT(BlueprintType)
+struct ACTGAME_API FActionFrame
 {
+    GENERATED_BODY()
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     float AnimKeyFrame{ 0.0 };
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     int LoopFrame{ 1 };
-    TArray<CancelTag> CancelTags;
-    ActionFrame* NextFrame{ nullptr };
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    TArray<FCancelTag> CancelTags;
+    // 攻击框
+    // 受击框
 };
 
 USTRUCT(BlueprintType)
