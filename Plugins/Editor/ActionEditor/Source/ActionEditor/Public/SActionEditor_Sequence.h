@@ -29,9 +29,18 @@ private:
     int32 GetStartFrame(UMovieSceneSection* Section);
     int32 GetEndFrame(UMovieSceneSection* Section);
 
+public:
+    void OpenActionInfo();
+
+private:
+    void OnActionChosen(const TArray<FAssetData>& Assets);
+
 private:
 	UPROPERTY()
 	class ULevelSequence* CurrentLevelSequence{ nullptr };
 
 	TSharedPtr<ISequencer> Sequencer;
+
+    UPROPERTY()
+    TObjectPtr<UActionInfoAsset> ActionInfoAsset{ nullptr };
 };

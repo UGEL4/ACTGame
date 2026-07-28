@@ -24,6 +24,7 @@ public:
 public:
 	FReply OnClickOpenEditorLevel();
     FReply SaveActionAsset();
+    FReply OpenActionAsset();
     void SetSequencerEditor(TSharedRef<SActionEditor_Sequence> InSequenceWidget);
 
 private:

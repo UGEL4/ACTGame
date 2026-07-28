@@ -20,15 +20,15 @@ void SActionEditorMenu::Construct(const FArguments& InArgs)
 			+ SHorizontalBox::Slot()
 			[
 				SNew(SHorizontalBox)
+				//+ SHorizontalBox::Slot()
+				//.VAlign(VAlign_Top)
+				//[
+				//	SNew(STextBlock).Text(FText::FromString(TEXT("打开关卡")))
+				//]
 				+ SHorizontalBox::Slot()
 				.VAlign(VAlign_Top)
 				[
-					SNew(STextBlock).Text(FText::FromString(TEXT("打开关卡")))
-				]
-				+ SHorizontalBox::Slot()
-				.VAlign(VAlign_Top)
-				[
-					SNew(SButton).Text(FText::FromString(TEXT("打开")))
+					SNew(SButton).Text(FText::FromString(TEXT("打开关卡")))
 					.OnClicked(FOnClicked::CreateSP(this, &SActionEditorMenu::OnClickOpenEditorLevel))
 				]
 				+ SHorizontalBox::Slot()
@@ -36,6 +36,12 @@ void SActionEditorMenu::Construct(const FArguments& InArgs)
 				[
 					SNew(SButton).Text(FText::FromString(TEXT("保存")))
 					.OnClicked(FOnClicked::CreateSP(this, &SActionEditorMenu::SaveActionAsset))
+				]
+                + SHorizontalBox::Slot()
+				.VAlign(VAlign_Top)
+				[
+					SNew(SButton).Text(FText::FromString(TEXT("打开")))
+					.OnClicked(FOnClicked::CreateSP(this, &SActionEditorMenu::OpenActionAsset))
 				]
 			]
 		]
@@ -80,6 +86,18 @@ FReply SActionEditorMenu::SaveActionAsset()
     Ptr->SaveActionAsset();
 
 	return FReply::Handled();
+}
+
+FReply SActionEditorMenu::OpenActionAsset()
+{
+    TSharedPtr<SActionEditor_Sequence> Ptr = SequenceWidget.Pin();
+    if (!Ptr.IsValid())
+    {
+        return FReply::Handled();
+    }
+    UE_LOG(LogTemp, Warning, TEXT("Open action asset"));
+    Ptr->OpenActionInfo();
+    return FReply::Handled();
 }
 
 void SActionEditorMenu::SetSequencerEditor(TSharedRef<SActionEditor_Sequence> InSequenceWidget)
