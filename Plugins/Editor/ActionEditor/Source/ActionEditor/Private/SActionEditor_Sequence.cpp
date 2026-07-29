@@ -27,6 +27,7 @@
 #include "EditorDirectories.h"
 #include "IContentBrowserSingleton.h"
 #include "ContentBrowserModule.h"
+#include "../TrackEditor/ActionInfo_TrackEditor.h"
 
 #define LOCTEXT_NAMESPACE "SActionEditor_Sequence"
 
@@ -629,6 +630,42 @@ void SActionEditor_Sequence::OnActionChosen(const TArray<FAssetData>& Assets)
         UE_LOG(LogTemp, Warning, TEXT("已加载："), *ActionAsset->ActionName.ToString());
         //ActionInfoAsset = ActionAsset;
         // 构造sequence
+        int32 FrameNum = ActionAsset->FrameList.Num();
+        if (FrameNum == 0)
+        {
+            FrameNum = 10;
+        }
+        UMovieScene* MovieScene = Sequencer->GetFocusedMovieSceneSequence()->GetMovieScene();
+        if (!MovieScene)
+        {
+            return;
+        }
+        // 清理旧的数据
+        auto& Tracks = MovieScene->GetTracks();
+        for (int32 i = Tracks.Num() - 1; i >= 0; i--)
+        {
+            MovieScene->RemoveTrack(*Tracks[i]);
+        }
+        // UTrack_ActionInfo
+        //Sequencer->GetTrackEditor()
+        const FScopedTransaction Transaction(LOCTEXT("ActionEditorSequence_Transaction", "Add ActionInfo Track"));
+        MovieScene->Modify();
+
+        UTrack_ActionInfo* NewTrack = MovieScene->AddTrack<UTrack_ActionInfo>();
+        check(NewTrack);
+
+        NewTrack->SetDisplayName(LOCTEXT("ActionInfoTrackName", "ActionInfo"));
+
+        if (Sequencer.IsValid())
+        {
+            Sequencer->OnAddTrack(NewTrack, FGuid());
+        }
+        auto ActionSection = NewTrack->CreateNewSection();
+        {
+            ActionSection->SetRange(TRange<FFrameNumber>(0, (FrameNum * MovieScene->GetTickResolution()))
+        }
+        //FActionInfo_TrackEditor::MakeSectionInterface()
+
     }
 }
 
