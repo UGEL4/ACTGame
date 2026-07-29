@@ -630,11 +630,6 @@ void SActionEditor_Sequence::OnActionChosen(const TArray<FAssetData>& Assets)
         UE_LOG(LogTemp, Warning, TEXT("已加载："), *ActionAsset->ActionName.ToString());
         //ActionInfoAsset = ActionAsset;
         // 构造sequence
-        int32 FrameNum = ActionAsset->FrameList.Num();
-        if (FrameNum == 0)
-        {
-            FrameNum = 10;
-        }
         UMovieScene* MovieScene = Sequencer->GetFocusedMovieSceneSequence()->GetMovieScene();
         if (!MovieScene)
         {
@@ -648,10 +643,19 @@ void SActionEditor_Sequence::OnActionChosen(const TArray<FAssetData>& Assets)
         }
         // UTrack_ActionInfo
         //Sequencer->GetTrackEditor()
+        UTrack_ActionInfo* NewTrack = BuildActionInfoTrack(*ActionAsset);
+    }
+}
+
+UTrack_ActionInfo* SActionEditor_Sequence::BuildActionInfoTrack(const UActionInfoAsset& ActionAsset)
+{
+    UMovieScene* MovieScene     = Sequencer->GetFocusedMovieSceneSequence()->GetMovieScene();
+    UTrack_ActionInfo* NewTrack = nullptr;
+    {
         const FScopedTransaction Transaction(LOCTEXT("ActionEditorSequence_Transaction", "Add ActionInfo Track"));
         MovieScene->Modify();
 
-        UTrack_ActionInfo* NewTrack = MovieScene->AddTrack<UTrack_ActionInfo>();
+        NewTrack = MovieScene->AddTrack<UTrack_ActionInfo>();
         check(NewTrack);
 
         NewTrack->SetDisplayName(LOCTEXT("ActionInfoTrackName", "ActionInfo"));
@@ -660,13 +664,66 @@ void SActionEditor_Sequence::OnActionChosen(const TArray<FAssetData>& Assets)
         {
             Sequencer->OnAddTrack(NewTrack, FGuid());
         }
-        auto ActionSection = NewTrack->CreateNewSection();
-        {
-            ActionSection->SetRange(TRange<FFrameNumber>(0, (FrameNum * MovieScene->GetTickResolution()))
-        }
-        //FActionInfo_TrackEditor::MakeSectionInterface()
-
     }
+    int32 FrameNum = ActionAsset.FrameList.Num();
+    if (FrameNum == 0)
+    {
+        FrameNum = 10;
+    }
+
+    FFrameRate DisplayRate          = Sequencer->GetFocusedDisplayRate();
+    FFrameRate TickResolution       = Sequencer->GetFocusedTickResolution();
+    FQualifiedFrameTime CurrentTime = Sequencer->GetLocalTime();
+    FFrameNumber PlaybackEnd        = UE::MovieScene::DiscreteExclusiveUpper(Sequencer->GetFocusedMovieSceneSequence()->GetMovieScene()->GetPlaybackRange());
+
+    int32 SpecifiedRowIndex = 0;
+
+    FScopedTransaction Transaction(LOCTEXT("AddSectionTransactionText", "Add Section"));
+    if (UMovieSceneSection* NewSection = NewTrack->CreateNewSection())
+    {
+        USection_ActionInfo* S = Cast<USection_ActionInfo>(NewSection);
+        {
+            S->ActionName           = ActionAsset.ActionName;
+            S->CancelDataList       = ActionAsset.CancelDataList;
+            S->AutoNextActionId     = ActionAsset.AutoNextActionId;
+            S->KeepPlayingAnimation = ActionAsset.KeepPlayingAnimation;
+            S->AutoTerminate        = ActionAsset.AutoTerminate;
+            S->Priority             = FrameNum;
+        }
+
+        int32 OverlapPriority = 0;
+        TMap<int32, int32> NewToOldRowIndices;
+
+        NewTrack->Modify();
+        NewTrack->OnRowIndicesChanged(NewToOldRowIndices);
+        /* int32 a = DisplayRate.Numerator;
+        int32 b = TickResolution.Numerator;
+        int32 e = FrameNum / a * b;
+        UE_LOG(LogTemp, Warning, TEXT(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>：%d, %d, %d"), a, b, e);*/
+
+        FFrameTime SourceTime = FFrameTime::FromDecimal(FrameNum);
+        FFrameTime EndTime    = ConvertFrameTime(SourceTime, DisplayRate, TickResolution);
+        NewSection->SetRange(TRange<FFrameNumber>(FFrameNumber(0), EndTime.FrameNumber));
+
+        NewSection->SetOverlapPriority(OverlapPriority);
+        NewSection->SetRowIndex(SpecifiedRowIndex);
+        NewSection->SetBlendType(EMovieSceneBlendType::Absolute);
+
+        NewTrack->AddSection(*NewSection);
+        NewTrack->UpdateEasing();
+
+        if (UMovieSceneNameableTrack* NameableTrack = Cast<UMovieSceneNameableTrack>(NewTrack))
+        {
+            NameableTrack->SetTrackRowDisplayName(FText::GetEmpty(), SpecifiedRowIndex);
+        }
+
+        Sequencer->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::MovieSceneStructureItemAdded);
+    }
+    else
+    {
+        Transaction.Cancel();
+    }
+    return NewTrack;
 }
 
 #undef LOCTEXT_NAMESPACE

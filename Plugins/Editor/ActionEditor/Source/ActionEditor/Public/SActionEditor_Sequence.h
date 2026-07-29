@@ -9,6 +9,10 @@
 /**
  * 
  */
+
+class UTrack_ActionInfo;
+class UActionInfoAsset;
+
 class ACTIONEDITOR_API SActionEditor_Sequence : public SCompoundWidget
 {
 public:
@@ -34,6 +38,7 @@ public:
 
 private:
     void OnActionChosen(const TArray<FAssetData>& Assets);
+    UTrack_ActionInfo* BuildActionInfoTrack(const UActionInfoAsset& ActionAsset);
 
 private:
 	UPROPERTY()
