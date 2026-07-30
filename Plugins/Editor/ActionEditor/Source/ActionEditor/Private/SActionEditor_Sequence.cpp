@@ -132,7 +132,7 @@ void SActionEditor_Sequence::SaveActionAsset()
 
 		UTrack_ActionInfo* ActionInfoTrak{ nullptr };
 		UTrack_CancelTag* CancelTagTrack{ nullptr };
-		UTrack_Command* CommandTrack{ nullptr };
+		// UTrack_Command* CommandTrack{ nullptr };
 		auto& Tracks = MovieScene->GetTracks();
 		for (auto Track : Tracks)
 		{
@@ -150,13 +150,13 @@ void SActionEditor_Sequence::SaveActionAsset()
 					CancelTagTrack = Cast<UTrack_CancelTag>(Track);
 				}
 			}
-			else if (Track->IsA<UTrack_Command>())
-			{
-				if (!CommandTrack)
-				{
-					CommandTrack = Cast<UTrack_Command>(Track);
-				}
-			}
+            /*else if (Track->IsA<UTrack_Command>())
+            {
+                if (!CommandTrack)
+                {
+                    CommandTrack = Cast<UTrack_Command>(Track);
+                }
+            }*/
 		}
 		if (!ActionInfoTrak)
 		{
@@ -194,11 +194,12 @@ void SActionEditor_Sequence::SaveActionAsset()
         ActionAsset->ActionName     = ActionInfoSection->ActionName;
         ActionAsset->FrameList      = ActionFrames;
         ActionAsset->CancelDataList = ActionInfoSection->CancelDataList;
-        if (CommandTrack && CommandTrack->GetAllSections().Num() > 0)
+        ActionAsset->Commands       = ActionInfoSection->CommandList;
+        /*if (CommandTrack && CommandTrack->GetAllSections().Num() > 0)
         {
             auto CommandSection   = Cast<USection_Command>(CommandTrack->GetAllSections()[0]);
             ActionAsset->Commands = CommandSection->CommandList;
-        }
+        }*/
         return true; });
 
     /*/ 1. 获取 AssetTools 模块
@@ -644,6 +645,7 @@ void SActionEditor_Sequence::OnActionChosen(const TArray<FAssetData>& Assets)
         // UTrack_ActionInfo
         //Sequencer->GetTrackEditor()
         UTrack_ActionInfo* NewTrack = BuildActionInfoTrack(*ActionAsset);
+        BuildCancelTagTrack(*ActionAsset);
     }
 }
 
@@ -665,10 +667,10 @@ UTrack_ActionInfo* SActionEditor_Sequence::BuildActionInfoTrack(const UActionInf
             Sequencer->OnAddTrack(NewTrack, FGuid());
         }
     }
-    int32 FrameNum = ActionAsset.FrameList.Num();
-    if (FrameNum == 0)
+    int32 EndFrameNum = ActionAsset.FrameList.Num() - 1;
+    if (EndFrameNum <= 0)
     {
-        FrameNum = 10;
+        EndFrameNum = 10;
     }
 
     FFrameRate DisplayRate          = Sequencer->GetFocusedDisplayRate();
@@ -688,7 +690,8 @@ UTrack_ActionInfo* SActionEditor_Sequence::BuildActionInfoTrack(const UActionInf
             S->AutoNextActionId     = ActionAsset.AutoNextActionId;
             S->KeepPlayingAnimation = ActionAsset.KeepPlayingAnimation;
             S->AutoTerminate        = ActionAsset.AutoTerminate;
-            S->Priority             = FrameNum;
+            S->Priority             = ActionAsset.Priority;
+            S->CommandList          = ActionAsset.Commands;
         }
 
         int32 OverlapPriority = 0;
@@ -701,7 +704,7 @@ UTrack_ActionInfo* SActionEditor_Sequence::BuildActionInfoTrack(const UActionInf
         int32 e = FrameNum / a * b;
         UE_LOG(LogTemp, Warning, TEXT(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>：%d, %d, %d"), a, b, e);*/
 
-        FFrameTime SourceTime = FFrameTime::FromDecimal(FrameNum);
+        FFrameTime SourceTime = FFrameTime::FromDecimal(EndFrameNum);
         FFrameTime EndTime    = ConvertFrameTime(SourceTime, DisplayRate, TickResolution);
         NewSection->SetRange(TRange<FFrameNumber>(FFrameNumber(0), EndTime.FrameNumber));
 
@@ -723,6 +726,96 @@ UTrack_ActionInfo* SActionEditor_Sequence::BuildActionInfoTrack(const UActionInf
     {
         Transaction.Cancel();
     }
+    return NewTrack;
+}
+
+UTrack_CancelTag* SActionEditor_Sequence::BuildCancelTagTrack(const UActionInfoAsset& ActionAsset)
+{
+    UMovieScene* MovieScene     = Sequencer->GetFocusedMovieSceneSequence()->GetMovieScene();
+    UTrack_CancelTag* NewTrack = nullptr;
+    {
+        const FScopedTransaction Transaction(LOCTEXT("ActionEditorSequence_Transaction", "Add CancelTag Track"));
+        MovieScene->Modify();
+
+        NewTrack = MovieScene->AddTrack<UTrack_CancelTag>();
+        check(NewTrack);
+
+        NewTrack->SetDisplayName(LOCTEXT("CancelTagTrackName", "CancelTag"));
+
+        if (Sequencer.IsValid())
+        {
+            Sequencer->OnAddTrack(NewTrack, FGuid());
+        }
+    }
+
+    int32 FoundStart = -1;
+    int32 FoundEnd   = -1;
+    struct SectionIndex
+    {
+        int32 StartFrame;
+        int32 EndFrame;
+    };
+    TArray<SectionIndex> SectionIndIices;
+    for (int32 i = 0; i < ActionAsset.FrameList.Num(); i++)
+    {
+        if (ActionAsset.FrameList[i].CancelTags.Num() > 0 && FoundStart == -1)
+        {
+            FoundStart = i;
+        }
+        if (ActionAsset.FrameList[i].CancelTags.Num() == 0 && FoundStart >= 0)
+        {
+            // section 末尾
+            SectionIndIices.Add({ FoundStart, i - 1 });
+            FoundStart = -1;
+        }
+        if (i == ActionAsset.FrameList.Num() - 1 && FoundStart >= 0)
+        {
+            // 最后一个 section
+            SectionIndIices.Add({ FoundStart, i });
+        }
+    }
+    
+    FFrameRate DisplayRate    = Sequencer->GetFocusedDisplayRate();
+    FFrameRate TickResolution = Sequencer->GetFocusedTickResolution();
+    for (int32 i = 0; i < SectionIndIices.Num(); i++)
+    {
+        FScopedTransaction Transaction(LOCTEXT("AddSectionTransactionText", "Add Section"));
+        if (UMovieSceneSection* NewSection = NewTrack->CreateNewSection())
+        {
+            USection_CancelTag* S = Cast<USection_CancelTag>(NewSection);
+            S->TagList            = ActionAsset.FrameList[SectionIndIices[i].StartFrame].CancelTags;
+
+            int32 OverlapPriority = 0;
+            //TMap<int32, int32> NewToOldRowIndices;
+
+            NewTrack->Modify();
+            //NewTrack->OnRowIndicesChanged(NewToOldRowIndices);
+
+            FFrameTime SourceStartTime = FFrameTime::FromDecimal(SectionIndIices[i].StartFrame);
+            FFrameTime StartFrameTime  = ConvertFrameTime(SourceStartTime, DisplayRate, TickResolution);
+            FFrameTime SourceEndTime   = FFrameTime::FromDecimal(SectionIndIices[i].EndFrame);
+            FFrameTime EndFrameTime    = ConvertFrameTime(SourceEndTime, DisplayRate, TickResolution);
+            NewSection->SetRange(TRange<FFrameNumber>(StartFrameTime.FrameNumber, EndFrameTime.FrameNumber));
+
+            NewSection->SetOverlapPriority(OverlapPriority);
+            NewSection->SetRowIndex(i);
+            NewSection->SetBlendType(EMovieSceneBlendType::Absolute);
+
+            NewTrack->AddSection(*NewSection);
+            NewTrack->UpdateEasing();
+
+            Sequencer->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::MovieSceneStructureItemAdded);
+        }
+        else
+        {
+            Transaction.Cancel();
+        }
+    }
+    /*if (UMovieSceneNameableTrack* NameableTrack = Cast<UMovieSceneNameableTrack>(NewTrack))
+    {
+        NameableTrack->SetTrackRowDisplayName(FText::GetEmpty(), 0);
+    }*/
+
     return NewTrack;
 }
 

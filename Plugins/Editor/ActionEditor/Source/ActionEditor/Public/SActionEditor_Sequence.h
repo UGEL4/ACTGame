@@ -12,6 +12,7 @@
 
 class UTrack_ActionInfo;
 class UActionInfoAsset;
+class UTrack_CancelTag;
 
 class ACTIONEDITOR_API SActionEditor_Sequence : public SCompoundWidget
 {
@@ -39,6 +40,7 @@ public:
 private:
     void OnActionChosen(const TArray<FAssetData>& Assets);
     UTrack_ActionInfo* BuildActionInfoTrack(const UActionInfoAsset& ActionAsset);
+    UTrack_CancelTag* BuildCancelTagTrack(const UActionInfoAsset& ActionAsset);
 
 private:
 	UPROPERTY()

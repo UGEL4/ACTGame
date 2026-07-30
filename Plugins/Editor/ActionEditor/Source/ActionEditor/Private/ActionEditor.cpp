@@ -43,7 +43,7 @@ void FActionEditorModule::StartupModule()
 	ISequencerModule& Module     = FModuleManager::LoadModuleChecked<ISequencerModule>("sequencer");
     CancelTag_TrackEditorHandle  = Module.RegisterTrackEditor(FOnCreateTrackEditor::CreateStatic(&FCancelTag_TrackEditor::CreateTrackEditor));
     ActionInfo_TrackEditorHandle = Module.RegisterTrackEditor(FOnCreateTrackEditor::CreateStatic(&FActionInfo_TrackEditor::CreateTrackEditor));
-	ActionCommand_TrackEditorHandle = Module.RegisterTrackEditor(FOnCreateTrackEditor::CreateStatic(&FCommand_TrackEditor::CreateTrackEditor));
+	//ActionCommand_TrackEditorHandle = Module.RegisterTrackEditor(FOnCreateTrackEditor::CreateStatic(&FCommand_TrackEditor::CreateTrackEditor));
 }
 
 void FActionEditorModule::ShutdownModule()
@@ -64,7 +64,7 @@ void FActionEditorModule::ShutdownModule()
 	ISequencerModule& Module = FModuleManager::LoadModuleChecked<ISequencerModule>("sequencer");
     Module.UnRegisterTrackEditor(CancelTag_TrackEditorHandle);
     Module.UnRegisterTrackEditor(ActionInfo_TrackEditorHandle);
-	Module.UnRegisterTrackEditor(ActionCommand_TrackEditorHandle);
+	//Module.UnRegisterTrackEditor(ActionCommand_TrackEditorHandle);
 }
 
 TSharedRef<SDockTab> FActionEditorModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
