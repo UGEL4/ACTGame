@@ -13,6 +13,7 @@
 #include "../TrackEditor/CancelTag_TrackEditor.h"
 #include "../TrackEditor/ActionInfo_TrackEditor.h"
 #include "../TrackEditor/ActionCommand/Command_TrackEditor.h"
+#include "../TrackEditor/HitBox/HitBox_TrackEditor.h"
 
 static const FName ActionEditorTabName("ActionEditor");
 
@@ -43,6 +44,7 @@ void FActionEditorModule::StartupModule()
 	ISequencerModule& Module     = FModuleManager::LoadModuleChecked<ISequencerModule>("sequencer");
     CancelTag_TrackEditorHandle  = Module.RegisterTrackEditor(FOnCreateTrackEditor::CreateStatic(&FCancelTag_TrackEditor::CreateTrackEditor));
     ActionInfo_TrackEditorHandle = Module.RegisterTrackEditor(FOnCreateTrackEditor::CreateStatic(&FActionInfo_TrackEditor::CreateTrackEditor));
+    FHitBox_TrackEditorHandle    = Module.RegisterTrackEditor(FOnCreateTrackEditor::CreateStatic(&FHitBox_TrackEditor::CreateTrackEditor));
 	//ActionCommand_TrackEditorHandle = Module.RegisterTrackEditor(FOnCreateTrackEditor::CreateStatic(&FCommand_TrackEditor::CreateTrackEditor));
 }
 
@@ -64,6 +66,7 @@ void FActionEditorModule::ShutdownModule()
 	ISequencerModule& Module = FModuleManager::LoadModuleChecked<ISequencerModule>("sequencer");
     Module.UnRegisterTrackEditor(CancelTag_TrackEditorHandle);
     Module.UnRegisterTrackEditor(ActionInfo_TrackEditorHandle);
+    Module.UnRegisterTrackEditor(FHitBox_TrackEditorHandle);
 	//Module.UnRegisterTrackEditor(ActionCommand_TrackEditorHandle);
 }
 

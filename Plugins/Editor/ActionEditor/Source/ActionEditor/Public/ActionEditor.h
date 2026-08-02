@@ -33,4 +33,5 @@ private:
     FDelegateHandle CancelTag_TrackEditorHandle;
     FDelegateHandle ActionInfo_TrackEditorHandle;
 	FDelegateHandle ActionCommand_TrackEditorHandle;
+    FDelegateHandle FHitBox_TrackEditorHandle;
 };

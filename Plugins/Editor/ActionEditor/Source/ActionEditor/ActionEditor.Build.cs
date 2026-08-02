@@ -7,8 +7,9 @@ public class ActionEditor : ModuleRules
 	public ActionEditor(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		PublicIncludePaths.AddRange(
+        OptimizeCode = CodeOptimization.InShippingBuildsOnly;
+
+        PublicIncludePaths.AddRange(
 			new string[] {
 				// ... add public include paths required here ...
 			}
@@ -50,7 +51,9 @@ public class ActionEditor : ModuleRules
 				"MovieScene",      // Core movie scene track data
 				"Sequencer",       // The Sequencer UI module itself
 				"MovieSceneTools",  // Optional but helpful tools
-				"LevelSequenceEditor",
+                "MovieSceneTracks",
+                "SequencerCore",
+                "LevelSequenceEditor",
 				"EditorStyle",
 				"LevelEditor",
             }

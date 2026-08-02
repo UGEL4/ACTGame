@@ -28,6 +28,10 @@
 #include "IContentBrowserSingleton.h"
 #include "ContentBrowserModule.h"
 #include "../TrackEditor/ActionInfo_TrackEditor.h"
+#include "ActionEditor/Actor/HitBox/HitBoxActor.h"
+#include "Tracks/MovieScene3DTransformTrack.h"
+#include "Sections/MovieScene3DTransformSection.h"
+#include "LevelSequenceEditorSubsystem.h"
 
 #define LOCTEXT_NAMESPACE "SActionEditor_Sequence"
 
@@ -68,6 +72,7 @@ void SActionEditor_Sequence::Construct(const FArguments& InArgs)
     if (CurrentLevelSequence)
     {
         CurrentLevelSequence->Initialize();
+        CurrentLevelSequence->GetMovieScene()->SetDisplayRate(FFrameRate(60, 1));
         // CurrentLevelSequence->MarkPackageDirty();
         // FAssetRegistryModule::AssetCreated(CurrentLevelSequence);
 
@@ -89,7 +94,7 @@ void SActionEditor_Sequence::Construct(const FArguments& InArgs)
                                               { return GEditor->GetEditorWorldContext().World(); });
         InitParams.ViewParams.UniqueName                     = "ActionEditor";
         InitParams.ViewParams.ScrubberStyle                  = ESequencerScrubberStyle::FrameBlock;
-        InitParams.ViewParams.bShowPlaybackRangeInTimeSlider = true;
+        InitParams.ViewParams.bShowPlaybackRangeInTimeSlider = false;
 
         InitParams.HostCapabilities.bSupportsCurveEditor           = true;
         InitParams.HostCapabilities.bSupportsSaveMovieSceneAsset   = true;
@@ -168,23 +173,22 @@ void SActionEditor_Sequence::SaveActionAsset()
 		{
 			return false;
 		}
-        auto StartFrame  = GetStartFrame(ActionSections[0]);
-        auto EndFrame    = GetEndFrame(ActionSections[0]);
-        auto FrameNumber = EndFrame - StartFrame + 1;
+        auto StartFrame = GetStartFrame(ActionSections[0]);
+        auto FrameNums  = GetEndFrame(ActionSections[0]);
         TArray<FActionFrame> ActionFrames;
-        ActionFrames.SetNum(FrameNumber);
+        ActionFrames.SetNum(FrameNums);
         if (CancelTagTrack)
         {
             for (auto Section : CancelTagTrack->GetAllSections())
             {
                 int32 Start = GetStartFrame(Section);
                 int32 End   = GetEndFrame(Section);
-                if (End >= ActionFrames.Num())
+                /*if (End >= ActionFrames.Num())
                 {
                     continue;
-                }
+                }*/
                 auto CancelTagSection = Cast<USection_CancelTag>(Section);
-                for (int32 i = Start; i <= End; i++)
+                for (int32 i = Start; i < End && i < FrameNums; i++)
                 {
                     ActionFrames[i].CancelTags = CancelTagSection->TagList;
                 }
@@ -200,6 +204,170 @@ void SActionEditor_Sequence::SaveActionAsset()
             auto CommandSection   = Cast<USection_Command>(CommandTrack->GetAllSections()[0]);
             ActionAsset->Commands = CommandSection->CommandList;
         }*/
+
+        auto TickResolution = MovieScene->GetTickResolution();
+        auto DisplayRate    = MovieScene->GetDisplayRate();
+        ////// 攻击框
+        for (const auto& Binding : MovieScene->GetBindings())
+        {
+            auto Possessable = MovieScene->FindPossessable(Binding.GetObjectGuid());
+            if (!Possessable)
+            {
+                continue;
+            }
+
+            if (Possessable->GetPossessedObjectClass()->IsChildOf(AHitBoxActor::StaticClass()))
+            {
+                UMovieScene3DTransformTrack* TransformTrack = nullptr;
+                for (auto Track : Binding.GetTracks())
+                {
+                    if (auto CastedTrack = Cast<UMovieScene3DTransformTrack>(Track))
+                    {
+                        TransformTrack = CastedTrack;
+                        break;
+                    }
+                }
+                if (!TransformTrack)
+                {
+                    continue;
+                }
+
+                if (TransformTrack->GetAllSections().Num() > 0)
+                {
+                    auto TransformSection                        = Cast<UMovieScene3DTransformSection>(TransformTrack->GetAllSections()[0]);
+                    FMovieSceneChannelProxy& SectionChannelProxy = TransformSection->GetChannelProxy();
+                    TMovieSceneChannelHandle<FMovieSceneDoubleChannel> ChannelHandles[] = {
+                        SectionChannelProxy.GetChannelByName<FMovieSceneDoubleChannel>("Location.X"),
+                        SectionChannelProxy.GetChannelByName<FMovieSceneDoubleChannel>("Location.Y"),
+                        SectionChannelProxy.GetChannelByName<FMovieSceneDoubleChannel>("Location.Z"),
+                        SectionChannelProxy.GetChannelByName<FMovieSceneDoubleChannel>("Rotation.X"),
+                        SectionChannelProxy.GetChannelByName<FMovieSceneDoubleChannel>("Rotation.Y"),
+                        SectionChannelProxy.GetChannelByName<FMovieSceneDoubleChannel>("Rotation.Z"),
+                        SectionChannelProxy.GetChannelByName<FMovieSceneDoubleChannel>("Scale.X"),
+                        SectionChannelProxy.GetChannelByName<FMovieSceneDoubleChannel>("Scale.Y"),
+                        SectionChannelProxy.GetChannelByName<FMovieSceneDoubleChannel>("Scale.Z")
+                    };
+
+                    auto GetChannelValue = [](const TMovieSceneChannelHandle<FMovieSceneDoubleChannel>& ChannelHandle, const FFrameNumber& InFrameNumber, double& OutValue)
+                    {
+                        OutValue = 0.0;
+                        if (auto c = ChannelHandle.Get())
+                        {
+                            auto KeyTimes    = c->GetTimes();
+                            int32 FoundIndex = Algo::LowerBound(KeyTimes, InFrameNumber);
+                            bool HasKey      = (FoundIndex < KeyTimes.Num() && KeyTimes[FoundIndex] == InFrameNumber);
+                            if (HasKey)
+                            {
+                                OutValue = c->GetValues()[FoundIndex].Value;
+                                return true;
+                            }
+                        }
+                        return false;
+                    };
+
+                    ULevelSequenceEditorSubsystem* SequencerSubsys = GEditor->GetEditorSubsystem<ULevelSequenceEditorSubsystem>();
+                    if (SequencerSubsys)
+                    {
+
+                    }
+                    for (int32 f = 0; f < FrameNums; f++)
+                    {
+                        FFrameTime StartTime = FFrameTime::FromDecimal(f);
+                        FFrameTime FrameTime = ConvertFrameTime(StartTime, DisplayRate, TickResolution);
+                        // Location.X
+                        //double ValueX = 0.0;
+                        //if (auto c = ChannelHandles[0].Get())
+                        //{
+                        //    auto KeyTimes    = c->GetTimes();
+                        //    int32 FoundIndex = Algo::LowerBound(KeyTimes, FrameTime.FrameNumber);
+                        //    bool HasKey      = (FoundIndex < KeyTimes.Num() && KeyTimes[FoundIndex] == FrameTime.FrameNumber);
+                        //    if (HasKey)
+                        //    {
+                        //        ValueX = c->GetValues()[FoundIndex].Value;
+                        //    }
+                        //}
+                        double LocationX;
+                        bool HasX = GetChannelValue(ChannelHandles[0], FrameTime.FrameNumber, LocationX);
+                        // Location.Y
+                        double LocationY;
+                        bool HasY = GetChannelValue(ChannelHandles[1], FrameTime.FrameNumber, LocationY);
+                        // Location.Z
+                        double LocationZ;
+                        bool HasZ = GetChannelValue(ChannelHandles[2], FrameTime.FrameNumber, LocationZ);
+                        // Rotation.X
+                        double RotationX;
+                        HasX = GetChannelValue(ChannelHandles[3], FrameTime.FrameNumber, RotationX);
+                        // Rotation.Y
+                        double RotationY;
+                        HasY = GetChannelValue(ChannelHandles[4], FrameTime.FrameNumber, RotationY);
+                        // Rotation.Z
+                        double RotationZ;
+                        HasZ = GetChannelValue(ChannelHandles[5], FrameTime.FrameNumber, RotationZ);
+
+                        if (HasX || HasY || HasZ)
+                        {
+                            FAttackBoxData AttackBox;
+                            AttackBox.Shape.ShapeType        = EHitShapeType::Capsule;
+                            AttackBox.Shape.RelativeLocation = FVector(LocationX, LocationY, LocationZ);
+                            AttackBox.Shape.RelativeRotation = FRotator(RotationX, RotationY, RotationZ);
+                            AttackBox.Shape.Param            = FVector(38.f, 88.f, 0.f);
+                            // ActionAsset->FrameList[f].AttackBoxList.Em
+                        }
+                    }
+                }
+                
+
+
+                // 用于临时存储解析出的变换组件
+                struct FFrameTransform
+                {
+                    FFrameNumber Time;
+                    FVector Translation;
+                    FRotator Rotation;
+                    FVector Scale;
+                };
+                TMap<FFrameNumber, FFrameTransform> FrameDataMap;
+
+                // 3. 遍历每个 FTrajectoryKey
+                //for (const FTrajectoryKey& Key : TrajectoryKeys)
+                //{
+                //    FFrameNumber CurrentTime   = Key.Time;
+                //    FFrameTransform& FrameData = FrameDataMap.FindOrAdd(CurrentTime);
+
+                //    // 4. 遍历 KeyData 数组，获取各个通道的值
+                //    for (const FTrajectoryKey::FData& Data : Key.KeyData)
+                //    {
+                //        // 通过 Section 和 KeyHandle 获取通道和数值
+                //        if (UMovieScene3DTransformSection* Section = Data.Section.Get())
+                //        {
+                //            //Section->GetChannelProxy().GetChannels()
+                //            //Section->GetChannelProxy().GetChannelByName(Data.ChannelName).Get();
+                //            //// 获取该通道的数值
+                //            //double Value = 0.0;
+                //            //if (FMovieSceneDoubleChannel* Channel = Cast<FMovieSceneDoubleChannel>(Section->GetChannelProxy().GetChannelByName(Data.ChannelName).Get()))
+                //            //{
+                //            //    // Evaluate 方法需要 FFrameTime，这里使用关键帧的时间
+                //            //    Channel->Evaluate(CurrentTime, Value);
+                //            //}
+
+                //            //// 根据 ChannelName 将值填入对应的变换组件
+                //            //FName ChannelName = Data.ChannelName;
+                //            //if (ChannelName == "Translation.X") { FrameData.Translation.X = Value; }
+                //            //else if (ChannelName == "Translation.Y") { FrameData.Translation.Y = Value; }
+                //            //else if (ChannelName == "Translation.Z") { FrameData.Translation.Z = Value; }
+                //            //else if (ChannelName == "Rotation.X") { FrameData.Rotation.Roll = Value; }
+                //            //// 注意：UE中旋转通道顺序可能为 Roll, Pitch, Yaw，请根据实际情况调整
+                //            //else if (ChannelName == "Rotation.Y") { FrameData.Rotation.Pitch = Value; }
+                //            //else if (ChannelName == "Rotation.Z") { FrameData.Rotation.Yaw = Value; }
+                //            //else if (ChannelName == "Scale.X") { FrameData.Scale.X = Value; }
+                //            //else if (ChannelName == "Scale.Y") { FrameData.Scale.Y = Value; }
+                //            //else if (ChannelName == "Scale.Z") { FrameData.Scale.Z = Value; }
+                //        }
+                //    }
+                //}
+            }
+        }
+        //////
         return true; });
 
     /*/ 1. 获取 AssetTools 模块
@@ -667,7 +835,7 @@ UTrack_ActionInfo* SActionEditor_Sequence::BuildActionInfoTrack(const UActionInf
             Sequencer->OnAddTrack(NewTrack, FGuid());
         }
     }
-    int32 EndFrameNum = ActionAsset.FrameList.Num() - 1;
+    int32 EndFrameNum = ActionAsset.FrameList.Num();
     if (EndFrameNum <= 0)
     {
         EndFrameNum = 10;
@@ -771,7 +939,7 @@ UTrack_CancelTag* SActionEditor_Sequence::BuildCancelTagTrack(const UActionInfoA
         if (i == ActionAsset.FrameList.Num() - 1 && FoundStart >= 0)
         {
             // 最后一个 section
-            SectionIndIices.Add({ FoundStart, i });
+            SectionIndIices.Add({ FoundStart, i + 1 });
         }
     }
     

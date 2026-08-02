@@ -7,6 +7,7 @@
 #include "UObject/ObjectMacros.h"
 #include "Framework/Game/Command/ActionCommand.h"
 #include "Asset/ActionInfo/RootMotionAsset.h"
+#include "../HitBox/HitBox.h"
 #include "ActionInfo.generated.h"
 
 USTRUCT(BlueprintType)
@@ -22,8 +23,14 @@ struct ACTGAME_API FActionFrame
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     TArray<FCancelTag> CancelTags;
+
     // 攻击框
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    TArray<FAttackBoxData> AttackBoxList;
+
     // 受击框
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    TArray<FHitBoxData> HitBoxList;
 };
 
 USTRUCT(BlueprintType)
