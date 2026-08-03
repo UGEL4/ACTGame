@@ -32,6 +32,8 @@
 #include "Tracks/MovieScene3DTransformTrack.h"
 #include "Sections/MovieScene3DTransformSection.h"
 #include "LevelSequenceEditorSubsystem.h"
+#include "../Track/HitBox/Track_HitBox.h"
+#include "../TrackEditor/HitBox/HitBox_TrackEditor.h"
 
 #define LOCTEXT_NAMESPACE "SActionEditor_Sequence"
 
@@ -781,6 +783,31 @@ void SActionEditor_Sequence::OpenActionInfo()
     ContentBrowserModule.Get().CreateOpenAssetDialog(OpenAssetDialogConfig,
                                                      FOnAssetsChosenForOpen::CreateStatic(&FLocal::OnLevelsSelected, OnActionChosenFunc),
                                                      FOnAssetDialogCancelled::CreateStatic(&FLocal::OnDialogCancelled, FEditorFileUtils::FOnLevelPickingCancelled::CreateLambda([]() {})));
+}
+
+void SActionEditor_Sequence::ClearInvalidHitBoxActor()
+{
+    UMovieScene* MovieScene = Sequencer->GetFocusedMovieSceneSequence()->GetMovieScene();
+    if (!MovieScene)
+    {
+        return;
+    }
+    auto& Tracks = MovieScene->GetTracks();
+    for (auto Track : Tracks)
+    {
+        if (Track->IsA<UTrack_HitBox>())
+        {
+            auto TrackEditor = Sequencer->GetTrackEditor(Cast<UTrack_HitBox>(Track));
+            if (TrackEditor.IsValid())
+            {
+                FHitBox_TrackEditor* TrackEditorPtr = static_cast<FHitBox_TrackEditor*>(TrackEditor.Get());
+                if (TrackEditorPtr)
+                {
+                    TrackEditorPtr->ClearInvalidHitBoxActor();
+                }
+            }
+        }
+    }
 }
 
 void SActionEditor_Sequence::OnActionChosen(const TArray<FAssetData>& Assets)

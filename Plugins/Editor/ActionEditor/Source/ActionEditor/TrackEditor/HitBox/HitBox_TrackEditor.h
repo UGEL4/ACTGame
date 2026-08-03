@@ -42,6 +42,8 @@ public:
     bool CanAddTrack() const;
 
     virtual TSharedRef<ISequencerSection> MakeSectionInterface(UMovieSceneSection& SectionObject, UMovieSceneTrack& Track, FGuid ObjectBinding) override;
+
+    void ClearInvalidHitBoxActor();
 	
 };
 

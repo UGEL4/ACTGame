@@ -25,6 +25,7 @@ public:
 	FReply OnClickOpenEditorLevel();
     FReply SaveActionAsset();
     FReply OpenActionAsset();
+    FReply ClearHitInvalidBoxActor();
     void SetSequencerEditor(TSharedRef<SActionEditor_Sequence> InSequenceWidget);
 
 private:

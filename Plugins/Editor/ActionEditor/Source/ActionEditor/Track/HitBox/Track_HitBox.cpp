@@ -68,6 +68,22 @@ FText UTrack_HitBox::GetDefaultDisplayName() const
     return LOCTEXT("UTrack_HitBoxName", "HitBox Track");
 }
 
+bool UTrack_HitBox::ClearInvalidHitBoxActor()
+{
+    bool HasChange = false;
+    for (auto Section : Sections)
+    {
+        if (Section)
+        {
+            if (Cast<USection_HitBox>(Section)->ClearInvalidHitBoxActor())
+            {
+                HasChange = true;
+            }
+        }
+    }
+    return HasChange;
+}
+
 #undef LOCTEXT_NAMESPACE
 
 

@@ -115,6 +115,34 @@ TSharedRef<ISequencerSection> FHitBox_TrackEditor::MakeSectionInterface(UMovieSc
     return MakeShared<FHitBox_SectionEditor>(SectionObject, GetSequencer());
 }
 
+void FHitBox_TrackEditor::ClearInvalidHitBoxActor()
+{
+    TSharedPtr<ISequencer> SequencerPtr = GetSequencer();
+    if (!SequencerPtr.IsValid()) return;
+
+    UMovieScene* MovieScene = SequencerPtr->GetFocusedMovieSceneSequence()->GetMovieScene();
+    if (!MovieScene) return;
+
+    bool HasChange = false;
+    for (UMovieSceneTrack* Track : MovieScene->GetTracks())
+    {
+        if (Track && Track->IsA<UTrack_HitBox>())
+        {
+            UTrack_HitBox* TrackPtr = Cast<UTrack_HitBox>(Track);
+            if (TrackPtr->ClearInvalidHitBoxActor())
+            {
+                TrackPtr->MarkPackageDirty();
+                HasChange = true;
+            }
+        }
+    }
+    // 刷新track
+    if (HasChange)
+    {
+        SequencerPtr->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::TrackValueChanged);
+    }
+}
+
 class SHitBoxSectionWidget : public SCompoundWidget
 {
 public:
@@ -139,7 +167,7 @@ public:
             FFrameNumber Frame = FindKeyframeAtPosition(MyGeometry, MouseEvent);
             if (Frame.Value >= 0)
             {
-                AHitBoxActor* ExistingActor = Section->GetActorForFrame(Frame);
+                //AHitBoxActor* ExistingActor = Section->GetActorForFrame(Frame);
 
                 // 构建菜单
                 FMenuBuilder MenuBuilder(true, nullptr);
@@ -150,14 +178,14 @@ public:
                 FSlateIcon(),
                 FUIAction(FExecuteAction::CreateSP(this, &SHitBoxSectionWidget::AddActorForFrame, Frame)));
 
-                MenuBuilder.AddMenuEntry(
+                /*MenuBuilder.AddMenuEntry(
                 LOCTEXT("RemoveActor", "删除此关键帧的 Actor"),
                 LOCTEXT("RemoveActorTooltip", "从场景中移除 Actor"),
                 FSlateIcon(),
                 FUIAction(
                 FExecuteAction::CreateSP(this, &SHitBoxSectionWidget::RemoveActorForFrame, Frame),
                 FCanExecuteAction::CreateLambda([ExistingActor]
-                                                { return ExistingActor != nullptr; })));
+                                                { return ExistingActor != nullptr; })));*/
 
                 MenuBuilder.AddMenuEntry(
                 LOCTEXT("RemoveKey", "删除此关键帧"),
@@ -220,14 +248,13 @@ private:
         return FFrameNumber(-1);
     }
 
-    // 添加/删除 Actor
+    // 添加 Actor
     void AddActorForFrame(FFrameNumber Frame)
     {
         if (!Section) return;
-        if (Section->GetActorForFrame(Frame)) return;
 
-        //int32 Index = Section->GetKeyframeIndexAtTime(Frame, 0.0f);
-        //if (Index == INDEX_NONE) return;
+        int32 Index = Section->GetKeyframeIndexAtTime(Frame);
+        if (Index == INDEX_NONE) return;
         //const FCapsuleKeyframeData& KeyData = Section->Keyframes[Index];
 
         //UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
@@ -348,7 +375,7 @@ int32 FHitBox_SectionEditor::OnPaintSection(FSequencerSectionPainter& Painter) c
         const FVector2D DiamondPos = DiamondCenter - DiamondSizeVec * 0.5f;
 
         FLinearColor KeyColor = FLinearColor::White;
-        if (CapsuleSection->GetActorForFrame(Key.Time))
+        if (CapsuleSection->HasAnyHitBoxInFrame(Key.Time))
         {
             KeyColor = FLinearColor::Green; // 或其它醒目颜色
         }
@@ -561,7 +588,7 @@ void FHitBox_SectionEditor::OnAddKeyFrame(FFrameNumber InDisplayFram)
     FFrameTime FrameTime = ConvertFrameTime(InDisplayFram, DisplayRate, TickResolution);
 
     // 检查是否已存在相同帧的关键帧
-    int32 ExistingIndex = CapsuleSection->GetKeyframeIndexAtTime(FrameTime.FrameNumber, 0.0f);
+    int32 ExistingIndex = CapsuleSection->GetKeyframeIndexAtTime(FrameTime.FrameNumber);
     if (ExistingIndex != INDEX_NONE)
     {
         // 如果存在，可以提示或更新，这里选择更新（覆盖）
@@ -576,11 +603,11 @@ void FHitBox_SectionEditor::OnAddKeyFrame(FFrameNumber InDisplayFram)
 
     // 创建新关键帧，使用默认参数
     FCapsuleKeyframeData NewKey;
-    NewKey.Time              = FrameTime.FrameNumber;
-    NewKey.Location          = FVector::ZeroVector;
-    NewKey.CapsuleRadius     = 34.0f;
-    NewKey.CapsuleHalfHeight = 88.0f;
-    NewKey.Rotation          = FRotator::ZeroRotator;
+    NewKey.Time = FrameTime.FrameNumber;
+    // NewKey.Location          = FVector::ZeroVector;
+    // NewKey.CapsuleRadius     = 34.0f;
+    // NewKey.CapsuleHalfHeight = 88.0f;
+    // NewKey.Rotation          = FRotator::ZeroRotator;
 
     CapsuleSection->Keyframes.Add(NewKey);
     // 按时间排序

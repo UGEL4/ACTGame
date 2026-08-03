@@ -28,6 +28,8 @@ public:
     virtual void RemoveSection(UMovieSceneSection& Section) override;
     virtual FText GetDefaultDisplayName() const override;
     virtual bool SupportsMultipleRows() const override { return true; }
+
+    bool ClearInvalidHitBoxActor();
 	
 private:
 	/** The track's sections. */

@@ -13,18 +13,8 @@ USection_HitBox::~USection_HitBox()
 {
 }
 
-int32 USection_HitBox::GetKeyframeIndexAtTime(FFrameNumber InFrame, float Tolerance /*= 0.1f*/) const
+int32 USection_HitBox::GetKeyframeIndexAtTime(FFrameNumber InFrame) const
 {
-    //// 将容差转换为帧数（假设30fps，可根据实际Tick分辨率调整）
-    //FFrameNumber ToleranceFrames = FFrameNumber(FMath::CeilToInt(Tolerance * 30.0f));
-
-    //for (int32 i = 0; i < Keyframes.Num(); ++i)
-    //{
-    //    if (FMath::Abs(Keyframes[i].Time.Value - InTime.FrameNumber.Value) <= ToleranceFrames.Value)
-    //    {
-    //        return i;
-    //    }
-    //}
     int32 Index = Algo::BinarySearchBy(Keyframes, InFrame, [](const FCapsuleKeyframeData& Data) { return Data.Time; });
     return Index < Keyframes.Num() ? Index : INDEX_NONE;
 }
@@ -51,7 +41,7 @@ bool USection_HitBox::RemoveKeyFrame(FFrameNumber InFrame)
     int32 Index = GetKeyframeIndexAtTime(InFrame);
     if (Index >= 0)
     {
-        RemoveActorForFrame(InFrame);
+        RemoveActorsForFrame(InFrame);
         Keyframes.RemoveAt(Index);
         return true;
     }
@@ -62,38 +52,111 @@ void USection_HitBox::SetActorForFrame(FFrameNumber Frame, AHitBoxActor* Actor)
 {
     if (Actor)
     {
-        KeyframeToActor.Add(Frame, Actor);
+        auto Info = KeyframeToActor.Find(Frame);
+        if (Info)
+        {
+            if (!Info->Actors.Contains(Actor))
+            {
+                Info->Actors.Add(Actor);
+            }
+        }
+        else
+        {
+            FFrameHitBoxActor NewInfo;
+            NewInfo.Actors.Add(Actor);
+            KeyframeToActor.Add(Frame, NewInfo);
+        }
     }
 }
 
-AHitBoxActor* USection_HitBox::GetActorForFrame(FFrameNumber Frame) const
+void USection_HitBox::GetActorsForFrame(FFrameNumber Frame, TArray<TWeakObjectPtr<AHitBoxActor>>& OutActors) const
 {
     if (auto Found = KeyframeToActor.Find(Frame))
     {
-        return Found->Get();
+        OutActors = Found->Actors;
     }
-    return nullptr;
 }
 
-void USection_HitBox::RemoveActorForFrame(FFrameNumber Frame)
+bool USection_HitBox::HasAnyHitBoxInFrame(FFrameNumber Frame) const
 {
-    if (auto Actor = GetActorForFrame(Frame))
+    if (auto Found = KeyframeToActor.Find(Frame))
     {
-        Actor->Destroy();
+        for (auto Actor : Found->Actors)
+        {
+            auto Ptr = Actor.Pin();
+            if (Ptr.IsValid())
+            {
+                return true;
+            }
+        }
     }
-    KeyframeToActor.Remove(Frame);
+    return false;
+}
+
+void USection_HitBox::RemoveActorForFrame(FFrameNumber Frame, AHitBoxActor* Actor)
+{
+    if (auto Info = KeyframeToActor.Find(Frame))
+    {
+        for (int32 i = 0; i < Info->Actors.Num(); i++)
+        {
+            if (Actor == Info->Actors[i].Get())
+            {
+                Info->Actors.RemoveAt(i);
+                break;
+            }
+        }
+    }
+}
+
+void USection_HitBox::RemoveActorsForFrame(FFrameNumber Frame)
+{
+    if (auto Info = KeyframeToActor.Find(Frame))
+    {
+        for (int32 i = 0; i < Info->Actors.Num(); i++)
+        {
+            if (auto Actor = Info->Actors[i].Pin())
+            {
+                if (Actor.IsValid())
+                {
+                    Actor->Destroy();
+                }
+            }
+        }
+        Info->Actors.Empty();
+    }
 }
 
 void USection_HitBox::ClearAllActors()
 {
     for (auto& Pair : KeyframeToActor)
     {
-        if (auto Actor = Pair.Value.Get())
+        for (auto Actor : Pair.Value.Actors)
         {
-            Actor->Destroy();
+            if (auto Ptr = Actor.Get())
+            {
+                Ptr->Destroy();
+            }
         }
     }
     KeyframeToActor.Empty();
+}
+
+bool USection_HitBox::ClearInvalidHitBoxActor()
+{
+    bool HasChange = false;
+    for (auto& Pair : KeyframeToActor)
+    {
+        for (int32 i = Pair.Value.Actors.Num() - 1; i >= 0; --i)
+        {
+            auto ActorPtr = Pair.Value.Actors[i].Pin();
+            if (!ActorPtr.IsValid())
+            {
+                Pair.Value.Actors.RemoveAt(i);
+                HasChange = true;
+            }
+        }
+    }
+    return HasChange;
 }
 
 void USection_HitBox::BeginDestroy()

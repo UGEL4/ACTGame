@@ -17,6 +17,16 @@ void SActionEditorMenu::Construct(const FArguments& InArgs)
 		.AutoHeight()
 		[
 			SNew(SHorizontalBox)
+            + SHorizontalBox::Slot()
+            [
+                SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.VAlign(VAlign_Top)
+				[
+					SNew(SButton).Text(FText::FromString(TEXT("清理无效的碰撞盒")))
+					.OnClicked(FOnClicked::CreateSP(this, &SActionEditorMenu::ClearHitInvalidBoxActor))
+				]
+            ]
 			+ SHorizontalBox::Slot()
 			[
 				SNew(SHorizontalBox)
@@ -97,6 +107,18 @@ FReply SActionEditorMenu::OpenActionAsset()
     }
     UE_LOG(LogTemp, Warning, TEXT("Open action asset"));
     Ptr->OpenActionInfo();
+    return FReply::Handled();
+}
+
+FReply SActionEditorMenu::ClearHitInvalidBoxActor()
+{
+    TSharedPtr<SActionEditor_Sequence> Ptr = SequenceWidget.Pin();
+    if (!Ptr.IsValid())
+    {
+        return FReply::Handled();
+    }
+    UE_LOG(LogTemp, Warning, TEXT("开始清理无效的碰撞盒"));
+    Ptr->ClearInvalidHitBoxActor();
     return FReply::Handled();
 }
 

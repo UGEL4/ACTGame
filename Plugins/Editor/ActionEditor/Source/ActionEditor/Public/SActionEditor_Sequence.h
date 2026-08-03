@@ -36,6 +36,7 @@ private:
 
 public:
     void OpenActionInfo();
+    void ClearInvalidHitBoxActor();
 
 private:
     void OnActionChosen(const TArray<FAssetData>& Assets);
