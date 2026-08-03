@@ -114,6 +114,7 @@ public:
 
     virtual void BeginSlipSection() override;
     virtual void SlipSection(FFrameNumber SlipTime) override;
+    void DeleteKeyFrame(FFrameNumber Frame);
 
 private:
     void ShowAddKeyframeDialog();

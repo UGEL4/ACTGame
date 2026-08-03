@@ -159,6 +159,13 @@ public:
                 FCanExecuteAction::CreateLambda([ExistingActor]
                                                 { return ExistingActor != nullptr; })));
 
+                MenuBuilder.AddMenuEntry(
+                LOCTEXT("RemoveKey", "删除此关键帧"),
+                LOCTEXT("RemoveKeyTooltip", "删除此关键帧"),
+                FSlateIcon(),
+                FUIAction(
+                FExecuteAction::CreateSP(this, &SHitBoxSectionWidget::RemoveFrame, Frame)));
+
                 FSlateApplication::Get().PushMenu(
                 AsShared(),
                 FWidgetPath(),
@@ -241,7 +248,16 @@ private:
 
     void RemoveActorForFrame(FFrameNumber Frame)
     {
+    }
 
+    void RemoveFrame(FFrameNumber Frame)
+    {
+        TSharedPtr<FHitBox_SectionEditor> Editor = SectionEditor.Pin();
+        if (!Editor.IsValid())
+        {
+            return;
+        }
+        Editor->DeleteKeyFrame(Frame);
     }
 
     USection_HitBox* Section;
@@ -409,6 +425,32 @@ void FHitBox_SectionEditor::SlipSection(FFrameNumber SlipTime)
 {
     ISequencerSection::SlipSection(SlipTime);
 }
+
+void FHitBox_SectionEditor::DeleteKeyFrame(FFrameNumber Frame)
+{
+    USection_HitBox* Section = Cast<USection_HitBox>(WeakSection.Get());
+    if (!Section) return;
+
+    TSharedPtr<ISequencer> Sequencer = WeakSequencer.Pin();
+    if (!Sequencer.IsValid()) return;
+
+    // 资产已存在，询问是否覆盖
+    EAppReturnType::Type Result = FMessageDialog::Open(
+        EAppMsgType::YesNo,
+        FText::FromString(TEXT("是否删除当前帧？")),
+        FText::FromString(TEXT("资产已存在"))
+    );
+    if (Result == EAppReturnType::No)
+    {
+        return;
+    }
+    //FFrameTime DeleteFrame = ConvertFrameTime(FFrameTime(Frame), Sequencer->GetFocusedTickResolution(), Sequencer->GetFocusedDisplayRate());
+    Section->RemoveKeyFrame(Frame);
+    // 标记脏并刷新 Sequencer
+    Section->MarkPackageDirty();
+    Sequencer->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::TrackValueChanged);
+}
+
 
 void FHitBox_SectionEditor::ShowAddKeyframeDialog()
 {

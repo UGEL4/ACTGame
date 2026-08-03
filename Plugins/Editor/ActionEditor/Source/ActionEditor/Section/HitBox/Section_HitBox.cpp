@@ -46,6 +46,18 @@ void USection_HitBox::AddKeyFrame(FFrameNumber InFrame)
     }
 }
 
+bool USection_HitBox::RemoveKeyFrame(FFrameNumber InFrame)
+{
+    int32 Index = GetKeyframeIndexAtTime(InFrame);
+    if (Index >= 0)
+    {
+        RemoveActorForFrame(InFrame);
+        Keyframes.RemoveAt(Index);
+        return true;
+    }
+    return false;
+}
+
 void USection_HitBox::SetActorForFrame(FFrameNumber Frame, AHitBoxActor* Actor)
 {
     if (Actor)
