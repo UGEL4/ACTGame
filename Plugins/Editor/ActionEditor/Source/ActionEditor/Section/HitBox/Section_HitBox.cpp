@@ -108,8 +108,9 @@ void USection_HitBox::RemoveActorForFrame(FFrameNumber Frame, AHitBoxActor* Acto
     }
 }
 
-void USection_HitBox::RemoveActorsForFrame(FFrameNumber Frame)
+bool USection_HitBox::RemoveActorsForFrame(FFrameNumber Frame)
 {
+    bool HasChange = false;
     if (auto Info = KeyframeToActor.Find(Frame))
     {
         for (int32 i = 0; i < Info->Actors.Num(); i++)
@@ -120,10 +121,12 @@ void USection_HitBox::RemoveActorsForFrame(FFrameNumber Frame)
                 {
                     Actor->Destroy();
                 }
+                HasChange = true;
             }
         }
         Info->Actors.Empty();
     }
+    return HasChange;
 }
 
 void USection_HitBox::ClearAllActors()

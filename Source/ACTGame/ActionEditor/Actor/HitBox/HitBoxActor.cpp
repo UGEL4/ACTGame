@@ -36,3 +36,11 @@ void AHitBoxActor::Tick(float DeltaTime)
 
 }
 
+FVector AHitBoxActor::GetCapsuleParam() const
+{
+    if (!HitBox)
+    {
+        return FVector::ZeroVector;
+    }
+    return FVector(HitBox->GetScaledCapsuleRadius(), HitBox->GetScaledCapsuleHalfHeight(), 0.0f);
+}

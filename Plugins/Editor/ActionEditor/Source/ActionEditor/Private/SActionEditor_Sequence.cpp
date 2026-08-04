@@ -33,6 +33,7 @@
 #include "Sections/MovieScene3DTransformSection.h"
 #include "LevelSequenceEditorSubsystem.h"
 #include "../Track/HitBox/Track_HitBox.h"
+#include "../Section/HitBox/Section_HitBox.h"
 #include "../TrackEditor/HitBox/HitBox_TrackEditor.h"
 
 #define LOCTEXT_NAMESPACE "SActionEditor_Sequence"
@@ -139,7 +140,7 @@ void SActionEditor_Sequence::SaveActionAsset()
 
 		UTrack_ActionInfo* ActionInfoTrak{ nullptr };
 		UTrack_CancelTag* CancelTagTrack{ nullptr };
-		// UTrack_Command* CommandTrack{ nullptr };
+		UTrack_HitBox* HitBoxTrack{ nullptr };
 		auto& Tracks = MovieScene->GetTracks();
 		for (auto Track : Tracks)
 		{
@@ -157,13 +158,13 @@ void SActionEditor_Sequence::SaveActionAsset()
 					CancelTagTrack = Cast<UTrack_CancelTag>(Track);
 				}
 			}
-            /*else if (Track->IsA<UTrack_Command>())
+            else if (Track->IsA<UTrack_HitBox>())
             {
-                if (!CommandTrack)
+                if (!HitBoxTrack)
                 {
-                    CommandTrack = Cast<UTrack_Command>(Track);
+                    HitBoxTrack = Cast<UTrack_HitBox>(Track);
                 }
-            }*/
+            }
 		}
 		if (!ActionInfoTrak)
 		{
@@ -210,7 +211,40 @@ void SActionEditor_Sequence::SaveActionAsset()
         auto TickResolution = MovieScene->GetTickResolution();
         auto DisplayRate    = MovieScene->GetDisplayRate();
         ////// 攻击框
-        for (const auto& Binding : MovieScene->GetBindings())
+        if (HitBoxTrack)
+        {
+            auto& Sections = HitBoxTrack->GetAllSections();
+            for (int32 i = 0; i < Sections.Num(); i++)
+            {
+                auto Section = Cast<USection_HitBox>(Sections[i]);
+                const auto& FrameList = Section->Keyframes;
+                for (auto& FrameData : FrameList)
+                {
+                    auto CurrentFrame = ConvertFrameTime(FrameData.Time, TickResolution, DisplayRate).FrameNumber;
+                    if (CurrentFrame.Value < 0 || CurrentFrame.Value >= FrameNums) continue;
+
+                    TArray<TWeakObjectPtr<AHitBoxActor>> HitActorList;
+                    Section->GetActorsForFrame(FrameData.Time, HitActorList);
+                    for (int32 j = 0; j < HitActorList.Num(); j++)
+                    {
+                        auto HitBoxActor = HitActorList[j].Pin();
+                        if (!HitBoxActor.IsValid()) continue;
+
+                        FAttackBoxData AttackBox;
+                        AttackBox.Shape.ShapeType        = EHitShapeType::Capsule;
+                        AttackBox.Shape.RelativeLocation = HitBoxActor->GetActorLocation();
+                        AttackBox.Shape.RelativeRotation = HitBoxActor->GetActorRotation();
+                        AttackBox.Shape.Param            = HitBoxActor->GetCapsuleParam();
+                        AttackBox.SameTag                = HitBoxActor->SameTag;
+                        AttackBox.Attack                 = HitBoxActor->Attack;
+                        AttackBox.Priority               = HitBoxActor->Priority;
+
+                        ActionAsset->FrameList[CurrentFrame.Value].AttackBoxList.Add(AttackBox);
+                    }
+                }
+            }
+        }
+        /* for (const auto& Binding : MovieScene->GetBindings())
         {
             auto Possessable = MovieScene->FindPossessable(Binding.GetObjectGuid());
             if (!Possessable)
@@ -266,163 +300,11 @@ void SActionEditor_Sequence::SaveActionAsset()
                         }
                         return false;
                     };
-
-                    ULevelSequenceEditorSubsystem* SequencerSubsys = GEditor->GetEditorSubsystem<ULevelSequenceEditorSubsystem>();
-                    if (SequencerSubsys)
-                    {
-
-                    }
-                    for (int32 f = 0; f < FrameNums; f++)
-                    {
-                        FFrameTime StartTime = FFrameTime::FromDecimal(f);
-                        FFrameTime FrameTime = ConvertFrameTime(StartTime, DisplayRate, TickResolution);
-                        // Location.X
-                        //double ValueX = 0.0;
-                        //if (auto c = ChannelHandles[0].Get())
-                        //{
-                        //    auto KeyTimes    = c->GetTimes();
-                        //    int32 FoundIndex = Algo::LowerBound(KeyTimes, FrameTime.FrameNumber);
-                        //    bool HasKey      = (FoundIndex < KeyTimes.Num() && KeyTimes[FoundIndex] == FrameTime.FrameNumber);
-                        //    if (HasKey)
-                        //    {
-                        //        ValueX = c->GetValues()[FoundIndex].Value;
-                        //    }
-                        //}
-                        double LocationX;
-                        bool HasX = GetChannelValue(ChannelHandles[0], FrameTime.FrameNumber, LocationX);
-                        // Location.Y
-                        double LocationY;
-                        bool HasY = GetChannelValue(ChannelHandles[1], FrameTime.FrameNumber, LocationY);
-                        // Location.Z
-                        double LocationZ;
-                        bool HasZ = GetChannelValue(ChannelHandles[2], FrameTime.FrameNumber, LocationZ);
-                        // Rotation.X
-                        double RotationX;
-                        HasX = GetChannelValue(ChannelHandles[3], FrameTime.FrameNumber, RotationX);
-                        // Rotation.Y
-                        double RotationY;
-                        HasY = GetChannelValue(ChannelHandles[4], FrameTime.FrameNumber, RotationY);
-                        // Rotation.Z
-                        double RotationZ;
-                        HasZ = GetChannelValue(ChannelHandles[5], FrameTime.FrameNumber, RotationZ);
-
-                        if (HasX || HasY || HasZ)
-                        {
-                            FAttackBoxData AttackBox;
-                            AttackBox.Shape.ShapeType        = EHitShapeType::Capsule;
-                            AttackBox.Shape.RelativeLocation = FVector(LocationX, LocationY, LocationZ);
-                            AttackBox.Shape.RelativeRotation = FRotator(RotationX, RotationY, RotationZ);
-                            AttackBox.Shape.Param            = FVector(38.f, 88.f, 0.f);
-                            // ActionAsset->FrameList[f].AttackBoxList.Em
-                        }
-                    }
                 }
-                
-
-
-                // 用于临时存储解析出的变换组件
-                struct FFrameTransform
-                {
-                    FFrameNumber Time;
-                    FVector Translation;
-                    FRotator Rotation;
-                    FVector Scale;
-                };
-                TMap<FFrameNumber, FFrameTransform> FrameDataMap;
-
-                // 3. 遍历每个 FTrajectoryKey
-                //for (const FTrajectoryKey& Key : TrajectoryKeys)
-                //{
-                //    FFrameNumber CurrentTime   = Key.Time;
-                //    FFrameTransform& FrameData = FrameDataMap.FindOrAdd(CurrentTime);
-
-                //    // 4. 遍历 KeyData 数组，获取各个通道的值
-                //    for (const FTrajectoryKey::FData& Data : Key.KeyData)
-                //    {
-                //        // 通过 Section 和 KeyHandle 获取通道和数值
-                //        if (UMovieScene3DTransformSection* Section = Data.Section.Get())
-                //        {
-                //            //Section->GetChannelProxy().GetChannels()
-                //            //Section->GetChannelProxy().GetChannelByName(Data.ChannelName).Get();
-                //            //// 获取该通道的数值
-                //            //double Value = 0.0;
-                //            //if (FMovieSceneDoubleChannel* Channel = Cast<FMovieSceneDoubleChannel>(Section->GetChannelProxy().GetChannelByName(Data.ChannelName).Get()))
-                //            //{
-                //            //    // Evaluate 方法需要 FFrameTime，这里使用关键帧的时间
-                //            //    Channel->Evaluate(CurrentTime, Value);
-                //            //}
-
-                //            //// 根据 ChannelName 将值填入对应的变换组件
-                //            //FName ChannelName = Data.ChannelName;
-                //            //if (ChannelName == "Translation.X") { FrameData.Translation.X = Value; }
-                //            //else if (ChannelName == "Translation.Y") { FrameData.Translation.Y = Value; }
-                //            //else if (ChannelName == "Translation.Z") { FrameData.Translation.Z = Value; }
-                //            //else if (ChannelName == "Rotation.X") { FrameData.Rotation.Roll = Value; }
-                //            //// 注意：UE中旋转通道顺序可能为 Roll, Pitch, Yaw，请根据实际情况调整
-                //            //else if (ChannelName == "Rotation.Y") { FrameData.Rotation.Pitch = Value; }
-                //            //else if (ChannelName == "Rotation.Z") { FrameData.Rotation.Yaw = Value; }
-                //            //else if (ChannelName == "Scale.X") { FrameData.Scale.X = Value; }
-                //            //else if (ChannelName == "Scale.Y") { FrameData.Scale.Y = Value; }
-                //            //else if (ChannelName == "Scale.Z") { FrameData.Scale.Z = Value; }
-                //        }
-                //    }
-                //}
             }
-        }
+        }*/
         //////
         return true; });
-
-    /*/ 1. 获取 AssetTools 模块
-    FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools");
-    IAssetTools& AssetTools = AssetToolsModule.Get();
-
-    // 2. 定义资产路径和名称
-    //FString AssetName = TEXT("MyNewAsset");
-    FString BasePackagePath = TEXT("/Game/Asset/ActionInfo/MyNewAsset"); // 在 /Game/Asset/ActionInfo 目录下
-    FString PackageName;
-    FString AssetName;
-    // Generates a safe, non-conflicting path (e.g., MyNewAsset_1 if MyNewAsset exists)
-    AssetToolsModule.Get().CreateUniqueAssetName(BasePackagePath, TEXT(""), PackageName, AssetName);
-    FString PackagePath = FPackageName::GetLongPackagePath(PackageName);
-
-    // 3. 创建 UDataAssetFactory 并指定你要创建的类
-    UDataAssetFactory* Factory = NewObject<UDataAssetFactory>();
-    Factory->DataAssetClass = UActionInfoAsset::StaticClass(); // 关键步骤：指定为你的类
-
-    // 4. 使用 AssetTools 创建资产
-    // CreateAsset 的参数：资产名称, 包路径, 资产类, 工厂
-    UObject* NewAsset = AssetTools.CreateAsset(AssetName, PackagePath, UActionInfoAsset::StaticClass(), Factory);
-
-    if (UActionInfoAsset* ActionAsset = Cast<UActionInfoAsset>(NewAsset))
-    {
-        auto ActionInfoSection = Cast<USection_ActionInfo>(ActionSections[0]);
-        // 5. 设置你的数据
-        ActionAsset->ActionName = ActionInfoSection->ActionName;
-        ActionAsset->FrameList  = ActionFrames;
-        ActionAsset->CancelDataList = ActionInfoSection->CancelDataList;
-        if (CommandTrack->GetAllSections().Num() > 0)
-        {
-            auto CommandSection = Cast<USection_Command>(CommandTrack->GetAllSections()[0]);
-            ActionAsset->Commands = CommandSection->CommandList;
-        }
-
-        // Notify the Asset Registry that a new asset exists in the content browser
-        FAssetRegistryModule::AssetCreated(NewAsset);
-        // 6. 标记为脏并保存
-        // AssetTools.CreateAsset 会自动标记包为脏并保存，但为安全起见，可以再次确认
-        UPackage* Package = ActionAsset->GetPackage();
-        Package->MarkPackageDirty();
-
-        FSavePackageArgs SaveArgs;
-        SaveArgs.SaveFlags = RF_Public | RF_Standalone;
-
-        FString PackageFileName = FPackageName::LongPackageNameToFilename(
-            PackageName,
-            FPackageName::GetAssetPackageExtension()
-        );
-
-        UPackage::Save(Package, NewAsset, *PackageFileName, SaveArgs);
-    }*/
 }
 
 bool SActionEditor_Sequence::CreateOrEditActionInfoAssetWithDialog(TFunction<bool(UActionInfoAsset*)> ModifyFunc)

@@ -58,7 +58,7 @@ public:
     bool HasAnyHitBoxInFrame(FFrameNumber Frame) const;
     /** 移除指定帧号的 Actor（并销毁它） */
     void RemoveActorForFrame(FFrameNumber Frame, AHitBoxActor* Actor);
-    void RemoveActorsForFrame(FFrameNumber Frame);
+    bool RemoveActorsForFrame(FFrameNumber Frame);
     /** 清除所有关联的 Actor */
     void ClearAllActors();
 

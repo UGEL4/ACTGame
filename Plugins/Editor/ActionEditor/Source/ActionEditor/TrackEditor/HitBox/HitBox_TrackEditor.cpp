@@ -12,6 +12,7 @@
 #include "MVVM/ViewModels/SequencerEditorViewModel.h"
 #include "MVVM/ViewModels/TrackAreaViewModel.h"
 #include "Misc/FrameNumber.h"
+#include "ActionEditor/Actor/HitBox/HitBoxActor.h"
 
 #define LOCTEXT_NAMESPACE "FHitBox_TrackEditor"
 
@@ -178,14 +179,12 @@ public:
                 FSlateIcon(),
                 FUIAction(FExecuteAction::CreateSP(this, &SHitBoxSectionWidget::AddActorForFrame, Frame)));
 
-                /*MenuBuilder.AddMenuEntry(
+                MenuBuilder.AddMenuEntry(
                 LOCTEXT("RemoveActor", "删除此关键帧的 Actor"),
                 LOCTEXT("RemoveActorTooltip", "从场景中移除 Actor"),
                 FSlateIcon(),
                 FUIAction(
-                FExecuteAction::CreateSP(this, &SHitBoxSectionWidget::RemoveActorForFrame, Frame),
-                FCanExecuteAction::CreateLambda([ExistingActor]
-                                                { return ExistingActor != nullptr; })));*/
+                FExecuteAction::CreateSP(this, &SHitBoxSectionWidget::RemoveActorForFrame, Frame)));
 
                 MenuBuilder.AddMenuEntry(
                 LOCTEXT("RemoveKey", "删除此关键帧"),
@@ -208,30 +207,26 @@ public:
     }
 
 private:
-    // 辅助：根据鼠标位置查找命中的关键帧
+    // 根据鼠标位置查找命中的关键帧
     FFrameNumber FindKeyframeAtPosition(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) const
     {
-        if (!Section || Section->Keyframes.Num() == 0)
-            return FFrameNumber(-1);
+        if (!Section || Section->Keyframes.Num() == 0) return FFrameNumber(-1);
 
         TSharedPtr<ISequencer> Sequencer = WeakSequencer.Pin();
-        if (!Sequencer.IsValid())
-            return FFrameNumber(-1);
+        if (!Sequencer.IsValid()) return FFrameNumber(-1);
 
         TSharedPtr<FHitBox_SectionEditor> SectionEditorPtr = SectionEditor.Pin();
-        if (!SectionEditorPtr.IsValid())
-        {
-            return FFrameNumber(-1);
-        }
+        if (!SectionEditorPtr.IsValid()) return FFrameNumber(-1);
 
 
-        auto TimeToPixelConverter  = SectionEditorPtr->GetTimeConverter();
+        auto TimeToPixelConverter = SectionEditorPtr->GetTimeConverter();
+        if (!TimeToPixelConverter.IsValid()) return FFrameNumber(-1);
+
         const FVector2D LocalMouse = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
         const float MousePixelX    = LocalMouse.X;
 
         const TRange<FFrameNumber> Range = Section->GetRange();
-        if (!Range.HasLowerBound())
-            return FFrameNumber(-1);
+        if (!Range.HasLowerBound()) return FFrameNumber(-1);
 
         const float StartPixel   = TimeToPixelConverter.FrameToPixel(Range.GetLowerBoundValue());
         const float DiamondSize  = 6.0f;
@@ -253,28 +248,38 @@ private:
     {
         if (!Section) return;
 
+        auto Sequencer = WeakSequencer.Pin();
+        if (!Sequencer.IsValid()) return;
+
         int32 Index = Section->GetKeyframeIndexAtTime(Frame);
         if (Index == INDEX_NONE) return;
-        //const FCapsuleKeyframeData& KeyData = Section->Keyframes[Index];
 
-        //UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
-        //if (!World) return;
+        UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
+        if (!World) return;
 
-        //// 这里使用 AStaticMeshActor 作为示例，您可替换为自定义 Actor
-        //AStaticMeshActor* NewActor = World->SpawnActor<AStaticMeshActor>(KeyData.Location, KeyData.Rotation);
-        //if (NewActor)
-        //{
-        //    NewActor->Tags.Add("HitBoxPreview");
-        //    Section->SetActorForFrame(Frame, NewActor);
-        //    Section->MarkPackageDirty();
-
-        //    if (auto Sequencer = WeakSequencer.Pin())
-        //        Sequencer->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::TrackValueChanged);
-        //}
+        AHitBoxActor* NewActor = World->SpawnActor<AHitBoxActor>(FVector::Zero(), FRotator::ZeroRotator);
+        if (NewActor)
+        {
+            NewActor->Tags.Add("HitBoxPreview");
+            auto FrameTime  = ConvertFrameTime(Frame, Sequencer->GetFocusedTickResolution(), Sequencer->GetFocusedDisplayRate());
+            NewActor->Frame = FrameTime.FrameNumber.Value;
+            Section->SetActorForFrame(Frame, NewActor);
+            Section->MarkPackageDirty();
+            Sequencer->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::TrackValueChanged);
+        }
     }
 
     void RemoveActorForFrame(FFrameNumber Frame)
     {
+        if (Section->RemoveActorsForFrame(Frame))
+        {
+            Section->MarkPackageDirty();
+            auto Sequencer = WeakSequencer.Pin();
+            if (Sequencer.IsValid())
+            {
+                Sequencer->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::TrackValueChanged);
+            }
+        }
     }
 
     void RemoveFrame(FFrameNumber Frame)
@@ -334,8 +339,8 @@ int32 FHitBox_SectionEditor::OnPaintSection(FSequencerSectionPainter& Painter) c
     const FFrameRate TickResolution          = Sequencer->GetFocusedTickResolution();
     const FTimeToPixel& TimeToPixel          = Painter.GetTimeConverter();
 
-    auto Temp = const_cast<FTimeToPixel*>(&TimeToPixel);
-    TimeToPixelConvertor = *static_cast<UE::Sequencer::FTimeToPixelSpace*>(Temp);
+    auto Temp                  = const_cast<FTimeToPixel*>(&TimeToPixel);
+    TimeToPixelConvertor       = *static_cast<UE::Sequencer::FTimeToPixelSpace*>(Temp);
     TimeToPixelConvertor.Valid = true;
     //TimeToPixelConvertor = FTimeToPixelSpaceWarp(AllottedGeometry, Sequencer->GetViewModel()->GetTrackArea()->GetViewRange(), TickResolution);
 
@@ -575,8 +580,6 @@ void FHitBox_SectionEditor::ShowAddKeyframeDialog()
 
 void FHitBox_SectionEditor::OnAddKeyFrame(FFrameNumber InDisplayFram)
 {
-    UE_LOG(LogTemp, Log, TEXT("确定"));
-
     USection_HitBox* CapsuleSection = Cast<USection_HitBox>(WeakSection.Get());
     if (!CapsuleSection) return;
 

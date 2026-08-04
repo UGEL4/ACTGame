@@ -25,7 +25,21 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+    FVector GetCapsuleParam() const;
+
 public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
     TObjectPtr<UCapsuleComponent> HitBox;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+    int32 Frame;
+
+    UPROPERTY(EditAnywhere)
+    float Attack = 0.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack")
+    int32 Priority = 0;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+    FName SameTag;
 };
