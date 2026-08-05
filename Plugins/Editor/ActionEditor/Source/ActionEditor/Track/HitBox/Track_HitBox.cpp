@@ -15,6 +15,11 @@ UTrack_HitBox::UTrack_HitBox(const FObjectInitializer& InInitializer)
 #endif
  }
 
+UTrack_HitBox::~UTrack_HitBox()
+{
+    UE_LOG(LogTemp, Log, TEXT("UTrack_HitBox Destruct"));
+}
+
 FName UTrack_HitBox::GetTrackName() const
  {
     static FName TestTrackName = TEXT("HitBoxTrack");
@@ -35,6 +40,11 @@ bool UTrack_HitBox::SupportsType(TSubclassOf<UMovieSceneSection> SectionClass) c
 
 
 UMovieSceneSection* UTrack_HitBox::CreateNewSection()
+{
+    return NewObject<USection_HitBox>(this, NAME_None, RF_Transactional);
+}
+
+USection_HitBox* UTrack_HitBox::CreateHitBoxSection()
 {
     return NewObject<USection_HitBox>(this, NAME_None, RF_Transactional);
 }

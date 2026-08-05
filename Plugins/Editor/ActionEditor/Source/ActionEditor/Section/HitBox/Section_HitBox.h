@@ -48,9 +48,10 @@ public:
 
     // 辅助函数：根据时间获取最近的关键帧
     int32 GetKeyframeIndexAtTime(FFrameNumber InFrame) const;
-    void AddKeyFrame(FFrameNumber InFrame);
+    void AddKeyFrame(FFrameNumber InFrame, bool Sort = true);
     bool RemoveKeyFrame(FFrameNumber InFrame);
 
+    void SetActorsForFrame(FFrameNumber Frame, TArray<TWeakObjectPtr<AHitBoxActor>> Actors);
     /** 为指定帧号设置关联的 Actor */
     void SetActorForFrame(FFrameNumber Frame, AHitBoxActor* Actor);
     /** 获取指定帧号的关联 Actor */

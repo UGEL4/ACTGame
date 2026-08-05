@@ -5,6 +5,7 @@
 #include "MovieSceneNameableTrack.h"
 #include "Track_HitBox.generated.h"
 
+class USection_HitBox;
 /**
  * 
  */
@@ -15,13 +16,14 @@ class ACTIONEDITOR_API UTrack_HitBox : public UMovieSceneNameableTrack
 
 public:
     UTrack_HitBox(const FObjectInitializer& InInitializer);
-    ~UTrack_HitBox() {}
+    ~UTrack_HitBox();
 
 public:
     virtual FName GetTrackName() const override;
     virtual void AddSection(UMovieSceneSection& Section) override;
     virtual bool SupportsType(TSubclassOf<UMovieSceneSection> SectionClass) const override;
     virtual UMovieSceneSection* CreateNewSection() override;
+    USection_HitBox* CreateHitBoxSection();
     virtual const TArray<UMovieSceneSection*>& GetAllSections() const override;
     virtual bool HasSection(const UMovieSceneSection& Section) const override;
     virtual bool IsEmpty() const override;

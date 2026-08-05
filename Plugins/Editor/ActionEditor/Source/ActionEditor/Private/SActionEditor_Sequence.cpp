@@ -35,6 +35,8 @@
 #include "../Track/HitBox/Track_HitBox.h"
 #include "../Section/HitBox/Section_HitBox.h"
 #include "../TrackEditor/HitBox/HitBox_TrackEditor.h"
+#include "Components/CapsuleComponent.h"
+#include "Editor/Transactor.h"
 
 #define LOCTEXT_NAMESPACE "SActionEditor_Sequence"
 
@@ -46,7 +48,46 @@ SActionEditor_Sequence::~SActionEditor_Sequence()
         Sequencer->Close();
         Sequencer.Reset();
     }
-    CurrentLevelSequence = nullptr;
+    GEditor->Trans;
+    if (GEditor && GEditor->Trans)
+    {
+        // 清除所有未完成的事务（这会丢弃所有撤销历史，但代价可接受）
+        GEditor->Trans->Reset(FText::FromString("Action Editor Shutdown"));
+    }
+
+    // 3. 从 Slate 层级中移除 Sequencer Widget，强制其立即销毁
+    //    （即使没有强引用，这一步也能确保没有任何 UI 残留）
+    ChildSlot.DetachWidget();
+    if (CurrentLevelSequence)
+    {
+        // 可选但推荐：清空所有轨道，主动释放其内部数据
+        if (UMovieScene* MovieScene = CurrentLevelSequence->GetMovieScene())
+        {
+            /*for (auto Track : MovieScene->GetTracks())
+            {
+                MovieScene->RemoveTrack(*Track);
+            }
+            auto& AllTrack = MovieScene->GetTracks();
+            for (int32 i = AllTrack.Num() - 1; i >= 0; i--)
+            {
+                MovieScene->RemoveTrack(*AllTrack[i]);
+            }*/
+            /*for (auto Binding : MovieScene->GetBindings())
+            {
+                MovieScene->RemoveTrack(*Track);
+            }*/
+            /*for (auto Section : MovieScene->GetAllSections())
+            {
+                Section->Destroy
+            }
+            MovieScene->RemoveAllTracks();*/
+        }
+
+        // 标记为垃圾，允许 GC 回收
+        CurrentLevelSequence->MarkAsGarbage();
+        CurrentLevelSequence = nullptr;
+        CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS, true);
+    }
 }
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
@@ -54,45 +95,21 @@ void SActionEditor_Sequence::Construct(const FArguments& InArgs)
 {
     ISequencerModule& Module = FModuleManager::LoadModuleChecked<ISequencerModule>("sequencer");
 
-    // 1. Define the package path and name
     FString PackagePath     = "/Game/ActionEditor/";
     FString SequenceName    = "MyCreatedSequence";
     FString FullPackagePath = PackagePath + SequenceName;
-
-    // 2. Create the Package and Asset
-    /*UPackage* Package = CreatePackage(*FullPackagePath);
-    Package->SetFlags(RF_Public | RF_Standalone);
-
-    IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
-    CurrentLevelSequence = Cast<ULevelSequence>(AssetTools.CreateAsset(
-        SequenceName,
-        PackagePath,
-        ULevelSequence::StaticClass(),
-        nullptr
-    ));*/
 
     CurrentLevelSequence = NewObject<ULevelSequence>(GetTransientPackage(), NAME_None, RF_Transactional);
     if (CurrentLevelSequence)
     {
         CurrentLevelSequence->Initialize();
         CurrentLevelSequence->GetMovieScene()->SetDisplayRate(FFrameRate(60, 1));
-        // CurrentLevelSequence->MarkPackageDirty();
-        // FAssetRegistryModule::AssetCreated(CurrentLevelSequence);
-
-        // 4. Open the new sequence in the Level Sequence Editor
-        /*TSharedPtr<FLevelSequenceEditorToolkit> LevelSequenceEditor = MakeShareable(new FLevelSequenceEditorToolkit());
-        LevelSequenceEditor->InitLevelSequenceEditor(
-            EToolkitMode::Standalone,
-            FToolkitManager::Get().FindHostForWorld(GWorld),
-            NewSequence
-        );*/
-
-        // 3. 初始化Sequencer的参数
+        //
         FSequencerInitParams InitParams;
-        InitParams.RootSequence           = CurrentLevelSequence; // 关联你的序列资产
-        InitParams.bEditWithinLevelEditor = false;                // 关键：设为false，表示它不依赖于主关卡编辑器
+        InitParams.RootSequence           = CurrentLevelSequence;
+        InitParams.bEditWithinLevelEditor = false;
         InitParams.ToolkitHost            = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor").GetFirstLevelEditor();
-        // ... 根据需要设置其他参数，如回调等
+        //
         InitParams.PlaybackContext.BindLambda([]() -> UObject*
                                               { return GEditor->GetEditorWorldContext().World(); });
         InitParams.ViewParams.UniqueName                     = "ActionEditor";
@@ -107,20 +124,13 @@ void SActionEditor_Sequence::Construct(const FArguments& InArgs)
         InitParams.HostCapabilities.bSupportsSidebar               = true;
         InitParams.HostCapabilities.bSupportsViewportSelectability = true;
 
-        // 4. 创建SSequencer实例
         Sequencer = Module.CreateSequencer(InitParams);
     }
 
-    // CurrentLevelSequence = NewObject<ULevelSequence>(GetTransientPackage(), NAME_None, RF_Transactional);
     ChildSlot
     [
-    // Populate the widget
-    // SNew(SVerticalBox)
-    // + SVerticalBox::Slot()
-    // .AutoHeight()
-    // [
-    // ]
-    Sequencer->GetSequencerWidget()];
+        Sequencer->GetSequencerWidget()
+    ];
 }
 
 void SActionEditor_Sequence::SaveActionAsset()
@@ -723,6 +733,7 @@ void SActionEditor_Sequence::OnActionChosen(const TArray<FAssetData>& Assets)
         //Sequencer->GetTrackEditor()
         UTrack_ActionInfo* NewTrack = BuildActionInfoTrack(*ActionAsset);
         BuildCancelTagTrack(*ActionAsset);
+        BuildHitBoxTrack(*ActionAsset);
     }
 }
 
@@ -892,6 +903,82 @@ UTrack_CancelTag* SActionEditor_Sequence::BuildCancelTagTrack(const UActionInfoA
     {
         NameableTrack->SetTrackRowDisplayName(FText::GetEmpty(), 0);
     }*/
+
+    return NewTrack;
+}
+
+UTrack_HitBox* SActionEditor_Sequence::BuildHitBoxTrack(const UActionInfoAsset& ActionAsset)
+{
+    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
+    if (!World) return nullptr;
+    UMovieScene* MovieScene = Sequencer->GetFocusedMovieSceneSequence()->GetMovieScene();
+    UTrack_HitBox* NewTrack = nullptr;
+    {
+        const FScopedTransaction Transaction(LOCTEXT("ActionEditorSequence_Transaction", "Add HitBox Track"));
+        MovieScene->Modify();
+
+        NewTrack = MovieScene->AddTrack<UTrack_HitBox>();
+        check(NewTrack);
+
+        NewTrack->SetDisplayName(LOCTEXT("HitBoxTrackName", "HitBox"));
+
+        if (Sequencer.IsValid())
+        {
+            Sequencer->OnAddTrack(NewTrack, FGuid());
+        }
+    }
+
+    FFrameRate DisplayRate    = Sequencer->GetFocusedDisplayRate();
+    FFrameRate TickResolution = Sequencer->GetFocusedTickResolution();
+    FScopedTransaction Transaction(LOCTEXT("AddSectionTransactionText", "Add Section"));
+    if (USection_HitBox* NewSection = NewTrack->CreateHitBoxSection())
+    {
+        FFrameTime EndFrameTime = ConvertFrameTime(FFrameNumber(ActionAsset.FrameList.Num()), DisplayRate, TickResolution);
+        NewSection->SetRange(TRange<FFrameNumber>(FFrameNumber(0), EndFrameTime.FrameNumber));
+        for (int32 i = 0; i < ActionAsset.FrameList.Num(); i++)
+        {
+            if (ActionAsset.FrameList[i].AttackBoxList.Num() > 0)
+            {
+                FFrameTime KeyFrameTime = ConvertFrameTime(FFrameNumber(i), DisplayRate, TickResolution);
+                NewSection->AddKeyFrame(KeyFrameTime.FrameNumber, false);
+
+                TArray<TWeakObjectPtr<AHitBoxActor>> NewActors;
+                for (int j = 0; j < ActionAsset.FrameList[i].AttackBoxList.Num(); j++)
+                {
+                    const FVector& Location  = ActionAsset.FrameList[i].AttackBoxList[j].Shape.RelativeLocation;
+                    const FRotator& Rotation = ActionAsset.FrameList[i].AttackBoxList[j].Shape.RelativeRotation;
+                    AHitBoxActor* NewActor   = World->SpawnActor<AHitBoxActor>(Location, Rotation);
+                    if (NewActor)
+                    {
+                        NewActor->Tags.Add("HitBoxPreview");
+                        NewActor->Frame    = i;
+                        NewActor->Attack   = ActionAsset.FrameList[i].AttackBoxList[j].Attack;
+                        NewActor->Priority = ActionAsset.FrameList[i].AttackBoxList[j].Priority;
+                        NewActor->SameTag  = ActionAsset.FrameList[i].AttackBoxList[j].SameTag;
+                        if (NewActor->HitBox)
+                        {
+                            NewActor->HitBox->SetCapsuleSize(ActionAsset.FrameList[i].AttackBoxList[j].Shape.GetCapsuleRadius(),
+                                                             ActionAsset.FrameList[i].AttackBoxList[j].Shape.GetCapsuleHalfHeight());
+                        }
+                        NewActors.Add(NewActor);
+                    }
+                }
+
+                NewSection->SetActorsForFrame(KeyFrameTime.FrameNumber, NewActors);
+            }
+        }
+        
+        NewSection->SetRowIndex(0);
+        NewSection->SetBlendType(EMovieSceneBlendType::Absolute);
+
+        NewTrack->AddSection(*NewSection);
+        NewTrack->UpdateEasing();
+        Sequencer->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::MovieSceneStructureItemAdded);
+    }
+    else
+    {
+        Transaction.Cancel();
+    }
 
     return NewTrack;
 }

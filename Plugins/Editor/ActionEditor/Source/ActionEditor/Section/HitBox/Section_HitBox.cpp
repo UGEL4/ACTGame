@@ -11,6 +11,7 @@ USection_HitBox::USection_HitBox(const FObjectInitializer& ObjectInitializer)
 
 USection_HitBox::~USection_HitBox()
 {
+    UE_LOG(LogTemp, Log, TEXT("USection_HitBox Destruct"));
 }
 
 int32 USection_HitBox::GetKeyframeIndexAtTime(FFrameNumber InFrame) const
@@ -19,7 +20,7 @@ int32 USection_HitBox::GetKeyframeIndexAtTime(FFrameNumber InFrame) const
     return Index < Keyframes.Num() ? Index : INDEX_NONE;
 }
 
-void USection_HitBox::AddKeyFrame(FFrameNumber InFrame)
+void USection_HitBox::AddKeyFrame(FFrameNumber InFrame, bool Sort)
 {
     int32 Index = GetKeyframeIndexAtTime(InFrame);
     if (Index >= 0)
@@ -31,8 +32,11 @@ void USection_HitBox::AddKeyFrame(FFrameNumber InFrame)
         FCapsuleKeyframeData Data;
         Data.Time = InFrame;
         Keyframes.Add(Data);
-        Keyframes.Sort([this](const FCapsuleKeyframeData& a, const FCapsuleKeyframeData& b)
-                       { return a.Time.Value < b.Time.Value; });
+        if (Sort)
+        {
+            Keyframes.Sort([this](const FCapsuleKeyframeData& a, const FCapsuleKeyframeData& b)
+                           { return a.Time.Value < b.Time.Value; });
+        }
     }
 }
 
@@ -46,6 +50,21 @@ bool USection_HitBox::RemoveKeyFrame(FFrameNumber InFrame)
         return true;
     }
     return false;
+}
+
+void USection_HitBox::SetActorsForFrame(FFrameNumber Frame, TArray<TWeakObjectPtr<AHitBoxActor>> Actors)
+{
+    auto Info = KeyframeToActor.Find(Frame);
+    if (Info)
+    {
+        Info->Actors.Append(Actors);
+    }
+    else
+    {
+        FFrameHitBoxActor NewInfo;
+        NewInfo.Actors = Actors;
+        KeyframeToActor.Add(Frame, NewInfo);
+    }
 }
 
 void USection_HitBox::SetActorForFrame(FFrameNumber Frame, AHitBoxActor* Actor)
