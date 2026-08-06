@@ -42,6 +42,12 @@ struct FActionInfo
     FName Name;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    TArray<FActionFrame> Frames;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    TArray<FCancelData> CancelDatas;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TArray<FActionCommand> Commands;
 
     // 这个动作可以cancel那些动作

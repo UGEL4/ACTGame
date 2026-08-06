@@ -29,7 +29,7 @@ protected:
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	void TickLogic(int64 CurrentFrame);
+	void TickLogic(int64 Frame);
 
 private:
 	int64 CurrentLogicFrame = 0;
@@ -39,11 +39,13 @@ private:
 	void KeepAction();
 	UFUNCTION(BlueprintCallable)
 	void ChangeAction(const FName& ActionId);
-	bool CanCancelCurrent(const FActionInfo& ActionInfo, int32 CheckFrame, bool CheckCommand, FBeCancelledTag& OutBeCancelledTag, FCancelTag& FoundTag);
+	bool CanCancelCurrent(const FActionInfo& ActionInfo, int32 CheckFrame, bool CheckCommand, FCancelData& OutCancelData, FCancelTag& FoundTag);
 
 private:
 	UPROPERTY(BlueprintReadWrite, Category = "Action Logic", meta = (AllowPrivateAccess = "true"))
 	TArray<FActionInfo> ActionList;
+
+    FActionFrame* CurrentFrame{ nullptr };
 
 	int32 CurrentActionFrameIndex = 0;
 

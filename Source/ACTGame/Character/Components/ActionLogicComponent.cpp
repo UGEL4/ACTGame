@@ -38,34 +38,39 @@ void UActionLogicComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
     // ...
 }
 
-void UActionLogicComponent::TickLogic(int64 CurrentFrame)
+void UActionLogicComponent::TickLogic(int64 Frame)
 {
-    CurrentLogicFrame = CurrentFrame;
+    CurrentLogicFrame = Frame;
     UpdateAction();
 }
 
 void UActionLogicComponent::UpdateAction()
 {
-    if (CurrentAction == nullptr)
+    if (CurrentAction == nullptr || CurrentAction->Frames.Num() == 0)
     {
+        CurrentFrame = nullptr;
         return;
     }
 
     int32 LastActionFrameIndex = CurrentActionFrameIndex;
     CurrentActionFrameIndex += 1;
-    if (CurrentActionFrameIndex >= CurrentAction->FrameNum)
+    if (CurrentActionFrameIndex >= CurrentAction->Frames.Num())
     {
         // todo: 待修正
         CurrentActionFrameIndex = 0;
     }
+    CurrentFrame = &CurrentAction->Frames[CurrentActionFrameIndex];
+
     for (const auto& Action : ActionList)
     {
-        FBeCancelledTag BeCancelledTag;
+        //FBeCancelledTag BeCancelledTag;
         FCancelTag CancelTag;
-        if (CanCancelCurrent(Action, CurrentActionFrameIndex, true, BeCancelledTag, CancelTag))
+        FCancelData CancelData;
+        if (CanCancelCurrent(Action, CurrentActionFrameIndex, true, CancelData, CancelTag))
         {
             // 预约动作
-            PreorderActionList.Emplace(Action.Name, Action.Priority + BeCancelledTag.Priority + CancelTag.Priority);
+            //PreorderActionList.Emplace(Action.Name, Action.Priority + BeCancelledTag.Priority + CancelTag.Priority);
+            PreorderActionList.Emplace(Action.Name, Action.Priority + CancelData.FixPriority + CancelTag.Priority);
         }
     }
     if (PreorderActionList.Num() <= 0 && (CurrentActionFrameIndex + 1 >= CurrentAction->FrameNum || CurrentAction->AutoTerminate))
@@ -118,11 +123,12 @@ void UActionLogicComponent::ChangeAction(const FName& ActionId)
 
     CurrentAction           = FoundAction;
     CurrentActionFrameIndex = 0;
-    CurrentBeCancelledTags.Empty();
-    for (const auto& BeCancelledTag : CurrentAction->BeCancelledTags)
-    {
-        CurrentBeCancelledTags.Emplace(BeCancelledTag);
-    }
+    CurrentFrame            = FoundAction->Frames.Num() > 0 ? &FoundAction->Frames[0] : nullptr;
+    // CurrentBeCancelledTags.Empty();
+    // for (const auto& BeCancelledTag : CurrentAction->BeCancelledTags)
+    // {
+    //     CurrentBeCancelledTags.Emplace(BeCancelledTag);
+    // }
 
     if (GEngine)
     {
@@ -137,9 +143,54 @@ void UActionLogicComponent::ChangeAction(const FName& ActionId)
     }
 }
 
-bool UActionLogicComponent::CanCancelCurrent(const FActionInfo& ActionInfo, int32 CheckFrame, bool CheckCommand, FBeCancelledTag& OutBeCancelledTag, FCancelTag& FoundTag)
+bool UActionLogicComponent::CanCancelCurrent(const FActionInfo& ActionInfo, int32 CheckFrame, bool CheckCommand, FCancelData& OutCancelData, FCancelTag& FoundTag)
 {
-    for (const auto& BeCancelledTag : CurrentBeCancelledTags)
+    if (!CurrentFrame)
+    {
+        return false;
+    }
+    auto Master = Cast<AACTGameCharacter>(GetOwner());
+    if (!Master)
+    {
+        return false;
+    }
+    auto InputComp = Master->GetInputToCommandComponent();
+    for (auto& CTag : CurrentFrame->CancelTags)
+    {
+        bool TagFound = false;
+        for (auto& CTagData : ActionInfo.CancelDatas)
+        {
+            if (CTagData.Tags.Num() > 0 && CTag.Tag == CTagData.Tags[0])
+            {
+                //OutBeCancelledTag = BeCancelledTag;
+                OutCancelData = CTagData;
+                TagFound      = true;
+                FoundTag      = CTag;
+                break;
+            }
+        }
+        if (!TagFound)
+        {
+            continue;
+        }
+
+        if (CheckCommand)
+        {
+            for (const auto& Command : ActionInfo.Commands)
+            {
+                if (InputComp->ActionOccur(Command))
+                {
+                    return true;
+                }
+            }
+        }
+        else
+        {
+            return true;
+        }
+    }
+
+    /* for (const auto& BeCancelledTag : CurrentBeCancelledTags)
     {
         if (!(BeCancelledTag.FrameRange.Min <= CheckFrame && BeCancelledTag.FrameRange.Max >= CheckFrame))
         {
@@ -184,7 +235,7 @@ bool UActionLogicComponent::CanCancelCurrent(const FActionInfo& ActionInfo, int3
         {
             return true;
         }
-    }
+    }*/
 
     return false;
 }
