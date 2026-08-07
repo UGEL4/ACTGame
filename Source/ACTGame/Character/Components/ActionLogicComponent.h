@@ -12,6 +12,7 @@
 #include "Framework/Game/Action/PreorderActionInfo.h"
 #include "ActionLogicComponent.generated.h"
 
+class UActionInfoAsset;
 
 UCLASS( ClassGroup=(Custom), Blueprintable, meta=(BlueprintSpawnableComponent) )
 class ACTGAME_API UActionLogicComponent : public UActorComponent
@@ -42,6 +43,9 @@ private:
 	bool CanCancelCurrent(const FActionInfo& ActionInfo, int32 CheckFrame, bool CheckCommand, FCancelData& OutCancelData, FCancelTag& FoundTag);
 
 private:
+    UPROPERTY(EditAnywhere, Category = "Asset", meta = (AllowPrivateAccess = "true"))
+    TArray<TObjectPtr<UActionInfoAsset>> ActionAssetList;
+
 	UPROPERTY(BlueprintReadWrite, Category = "Action Logic", meta = (AllowPrivateAccess = "true"))
 	TArray<FActionInfo> ActionList;
 

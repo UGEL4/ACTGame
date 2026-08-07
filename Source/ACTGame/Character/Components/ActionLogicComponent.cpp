@@ -7,6 +7,7 @@
 #include "Framework/Game/Action/CancelTag.h"
 #include "Framework/Game/Action/PreorderActionInfo.h"
 #include "ACTGameCharacter.h"
+#include "Asset/ActionInfo/ActionInfoAsset.h"
 
 // Sets default values for this component's properties
 UActionLogicComponent::UActionLogicComponent()
@@ -28,6 +29,31 @@ void UActionLogicComponent::BeginPlay()
     CurrentActionFrameIndex = 0;
     RootMotionMove = FVector::ZeroVector;
     CurrentAction = nullptr;
+
+    //todo
+    {
+        FName DefaultAction("Idle");
+        for (auto Asset : ActionAssetList)
+        {
+            FActionInfo ActionInfo;
+            ActionInfo.Name                 = Asset->ActionName;
+            ActionInfo.Frames               = Asset->FrameList;
+            ActionInfo.FrameNum             = ActionInfo.Frames.Num();
+            ActionInfo.CancelDatas          = Asset->CancelDataList;
+            ActionInfo.Commands             = Asset->Commands;
+            ActionInfo.AutoNextActionId     = Asset->AutoNextActionId;
+            ActionInfo.KeepPlayingAnimation = Asset->KeepPlayingAnimation;
+            ActionInfo.AutoTerminate        = Asset->AutoTerminate;
+            ActionInfo.Priority             = Asset->Priority;
+            int32 index = ActionList.Add(ActionInfo);
+            if (CurrentAction == nullptr && ActionInfo.Name == DefaultAction)
+            {
+                CurrentAction = &ActionList[index];
+                CurrentFrame  = &CurrentAction->Frames[0];
+            }
+        }
+    }
+    //SetCurrentActionInfoByIndex(0);
 }
 
 // Called every frame
