@@ -37,6 +37,8 @@
 #include "../TrackEditor/HitBox/HitBox_TrackEditor.h"
 #include "Components/CapsuleComponent.h"
 #include "Editor/Transactor.h"
+#include "../Track/MoveInputAcceptance/Track_MoveInputAcceptance.h"
+#include "../Section/MoveInputAcceptance/Section_MoveInputAcceptance.h"
 
 #define LOCTEXT_NAMESPACE "SActionEditor_Sequence"
 
@@ -151,6 +153,7 @@ void SActionEditor_Sequence::SaveActionAsset()
 		UTrack_ActionInfo* ActionInfoTrak{ nullptr };
 		UTrack_CancelTag* CancelTagTrack{ nullptr };
 		UTrack_HitBox* HitBoxTrack{ nullptr };
+        UTrack_MoveInputAcceptance* MoveInputAcceptanceTrack{ nullptr };
 		auto& Tracks = MovieScene->GetTracks();
 		for (auto Track : Tracks)
 		{
@@ -173,6 +176,13 @@ void SActionEditor_Sequence::SaveActionAsset()
                 if (!HitBoxTrack)
                 {
                     HitBoxTrack = Cast<UTrack_HitBox>(Track);
+                }
+            }
+            else if (Track->IsA<UTrack_MoveInputAcceptance>())
+            {
+                if (!MoveInputAcceptanceTrack)
+                {
+                    MoveInputAcceptanceTrack = Cast<UTrack_MoveInputAcceptance>(Track);
                 }
             }
 		}
@@ -313,6 +323,9 @@ void SActionEditor_Sequence::SaveActionAsset()
                 }
             }
         }*/
+        //////
+        ////// MoveInputAcceptance
+        OnSaveMoveInputAcceptance(ActionAsset, MoveInputAcceptanceTrack);
         //////
         return true; });
 }
@@ -608,6 +621,30 @@ int32 SActionEditor_Sequence::GetEndFrame(UMovieSceneSection* Section)
     }
 }
 
+void SActionEditor_Sequence::OnSaveMoveInputAcceptance(class UActionInfoAsset* Asset, UTrack_MoveInputAcceptance* Track)
+{
+    if (!Track)
+    {
+        return;
+    }
+    int32 LastFrame = -1;
+    for (auto SceneSection : Track->GetAllSections())
+    {
+        int32 Start  = GetStartFrame(SceneSection);
+        int32 End    = GetEndFrame(SceneSection);
+        auto Section = Cast<USection_MoveInputAcceptance>(SceneSection);
+        if (LastFrame >= Start)
+        {
+            Start = LastFrame;
+        }
+        LastFrame = End;
+        for (int32 i = Start; i < End && i < Asset->FrameList.Num(); i++)
+        {
+            Asset->FrameList[i].InputAcceptance = Section->InputAcceptance;
+        }
+    }
+}
+
 void SActionEditor_Sequence::OpenActionInfo()
 {
     struct FLocal
@@ -734,6 +771,7 @@ void SActionEditor_Sequence::OnActionChosen(const TArray<FAssetData>& Assets)
         UTrack_ActionInfo* NewTrack = BuildActionInfoTrack(*ActionAsset);
         BuildCancelTagTrack(*ActionAsset);
         BuildHitBoxTrack(*ActionAsset);
+        BuildMoveInputAcceptanceTrack(*ActionAsset);
     }
 }
 
@@ -979,6 +1017,97 @@ UTrack_HitBox* SActionEditor_Sequence::BuildHitBoxTrack(const UActionInfoAsset& 
     {
         Transaction.Cancel();
     }
+
+    return NewTrack;
+}
+
+UTrack_MoveInputAcceptance* SActionEditor_Sequence::BuildMoveInputAcceptanceTrack(const UActionInfoAsset& ActionAsset)
+{
+    int32 FoundStart = -1;
+    int32 FoundEnd   = -1;
+    struct SectionIndex
+    {
+        int32 StartFrame;
+        int32 EndFrame;
+    };
+    TArray<SectionIndex> SectionIndIices;
+    float LastValue = 0.0f;
+    for (int32 i = 0; i < ActionAsset.FrameList.Num(); i++)
+    {
+        float NowValue = ActionAsset.FrameList[i].InputAcceptance;
+        if ((NowValue > 0.0f || NowValue != LastValue) && FoundStart == -1)
+        {
+            FoundStart = i;
+            LastValue  = NowValue;
+        }
+        if ((NowValue == 0.0f || NowValue != LastValue) && FoundStart >= 0)
+        {
+            // section 末尾
+            SectionIndIices.Add({ FoundStart, i - 1 });
+            FoundStart = -1;
+            LastValue  = NowValue;
+        }
+        if (i == ActionAsset.FrameList.Num() - 1 && FoundStart >= 0)
+        {
+            // 最后一个 section
+            SectionIndIices.Add({ FoundStart, i + 1 });
+        }
+    }
+if (SectionIndIices.Num() == 0)
+    {
+        return nullptr;
+    }
+    UMovieScene* MovieScene              = Sequencer->GetFocusedMovieSceneSequence()->GetMovieScene();
+    UTrack_MoveInputAcceptance* NewTrack = nullptr;
+    {
+        const FScopedTransaction Transaction(LOCTEXT("ActionEditorSequence_Transaction", "Add MoveInputAcceptance Track"));
+        MovieScene->Modify();
+
+        NewTrack = MovieScene->AddTrack<UTrack_MoveInputAcceptance>();
+        check(NewTrack);
+
+        NewTrack->SetDisplayName(LOCTEXT("MoveInputAcceptanceTrackName", "MoveInputAcceptance"));
+
+        if (Sequencer.IsValid())
+        {
+            Sequencer->OnAddTrack(NewTrack, FGuid());
+        }
+    }
+
+    FFrameRate DisplayRate    = Sequencer->GetFocusedDisplayRate();
+    FFrameRate TickResolution = Sequencer->GetFocusedTickResolution();
+    int32 LastFrame           = -1;
+    for (int32 i = 0; i < SectionIndIices.Num(); i++)
+    {
+        FScopedTransaction Transaction(LOCTEXT("AddSectionTransactionText", "Add Section"));
+        if (USection_MoveInputAcceptance* NewSection = NewTrack->CreateNewMoveInputAcceptanceSection())
+        {
+            NewSection->InputAcceptance = ActionAsset.FrameList[SectionIndIices[i].StartFrame].InputAcceptance;
+
+            int32 OverlapPriority = 0;
+            NewTrack->Modify();
+
+            int32 StartFrame           = LastFrame >= SectionIndIices[i].StartFrame ? LastFrame + 1 : SectionIndIices[i].StartFrame;
+            FFrameTime SourceStartTime = FFrameTime::FromDecimal(StartFrame);
+            FFrameTime StartFrameTime  = ConvertFrameTime(SourceStartTime, DisplayRate, TickResolution);
+            FFrameTime SourceEndTime   = FFrameTime::FromDecimal(SectionIndIices[i].EndFrame);
+            FFrameTime EndFrameTime    = ConvertFrameTime(SourceEndTime, DisplayRate, TickResolution);
+            NewSection->SetRange(TRange<FFrameNumber>(StartFrameTime.FrameNumber, EndFrameTime.FrameNumber));
+            LastFrame = SectionIndIices[i].EndFrame;
+
+            NewSection->SetOverlapPriority(OverlapPriority);
+            NewSection->SetRowIndex(i);
+            NewSection->SetBlendType(EMovieSceneBlendType::Absolute);
+
+            NewTrack->AddSection(*NewSection);
+            NewTrack->UpdateEasing();
+        }
+        else
+        {
+            Transaction.Cancel();
+        }
+    }
+    Sequencer->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::MovieSceneStructureItemAdded);
 
     return NewTrack;
 }

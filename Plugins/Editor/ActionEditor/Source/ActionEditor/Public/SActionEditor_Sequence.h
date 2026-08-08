@@ -14,6 +14,7 @@ class UTrack_ActionInfo;
 class UActionInfoAsset;
 class UTrack_CancelTag;
 class UTrack_HitBox;
+class UTrack_MoveInputAcceptance;
 
 class ACTIONEDITOR_API SActionEditor_Sequence : public SCompoundWidget
 {
@@ -34,6 +35,7 @@ private:
 	bool CreateOrEditActionInfoAssetWithDialog(TFunction<bool(class UActionInfoAsset*)> ModifyFunc);
     int32 GetStartFrame(UMovieSceneSection* Section);
     int32 GetEndFrame(UMovieSceneSection* Section);
+    void OnSaveMoveInputAcceptance(class UActionInfoAsset* Asset, UTrack_MoveInputAcceptance* Track);
 
 public:
     void OpenActionInfo();
@@ -44,6 +46,7 @@ private:
     UTrack_ActionInfo* BuildActionInfoTrack(const UActionInfoAsset& ActionAsset);
     UTrack_CancelTag* BuildCancelTagTrack(const UActionInfoAsset& ActionAsset);
     UTrack_HitBox* BuildHitBoxTrack(const UActionInfoAsset& ActionAsset);
+    UTrack_MoveInputAcceptance* BuildMoveInputAcceptanceTrack(const UActionInfoAsset& ActionAsset);
 
 private:
 	UPROPERTY()

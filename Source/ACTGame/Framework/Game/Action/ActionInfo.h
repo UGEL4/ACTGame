@@ -31,6 +31,9 @@ struct ACTGAME_API FActionFrame
     // 受击框
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     TArray<FHitBoxData> HitBoxList;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    float InputAcceptance{ 0.0f };
 };
 
 USTRUCT(BlueprintType)
