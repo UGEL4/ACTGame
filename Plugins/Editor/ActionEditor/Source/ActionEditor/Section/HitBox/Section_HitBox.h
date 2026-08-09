@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "MovieSceneSection.h"
+#include "Framework/Game/Action/CancelTag.h"
 #include "Section_HitBox.generated.h"
 
 /**
@@ -20,6 +21,8 @@ struct FCapsuleKeyframeData
 
     UPROPERTY(EditAnywhere, Category = "Keyframe")
     FFrameNumber Time; // 关键帧在时间轴上的位置
+
+    //FCancelTag Tag;
 };
 
 USTRUCT(BlueprintType)

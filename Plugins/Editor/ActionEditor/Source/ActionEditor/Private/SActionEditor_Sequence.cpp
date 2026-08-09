@@ -202,6 +202,7 @@ void SActionEditor_Sequence::SaveActionAsset()
         ActionFrames.SetNum(FrameNums);
         if (CancelTagTrack)
         {
+            int32 LastFrame = -1;
             for (auto Section : CancelTagTrack->GetAllSections())
             {
                 int32 Start = GetStartFrame(Section);
@@ -210,8 +211,13 @@ void SActionEditor_Sequence::SaveActionAsset()
                 {
                     continue;
                 }*/
+                if (LastFrame >= Start)
+                {
+                    Start = LastFrame + 1;
+                }
+                LastFrame             = End;
                 auto CancelTagSection = Cast<USection_CancelTag>(Section);
-                for (int32 i = Start; i < End && i < FrameNums; i++)
+                for (int32 i = Start; i <= End && i < FrameNums; i++)
                 {
                     ActionFrames[i].CancelTags = CancelTagSection->TagList;
                 }
@@ -635,10 +641,10 @@ void SActionEditor_Sequence::OnSaveMoveInputAcceptance(class UActionInfoAsset* A
         auto Section = Cast<USection_MoveInputAcceptance>(SceneSection);
         if (LastFrame >= Start)
         {
-            Start = LastFrame;
+            Start = LastFrame + 1;
         }
         LastFrame = End;
-        for (int32 i = Start; i < End && i < Asset->FrameList.Num(); i++)
+        for (int32 i = Start; i <= End && i < Asset->FrameList.Num(); i++)
         {
             Asset->FrameList[i].InputAcceptance = Section->InputAcceptance;
         }
@@ -874,42 +880,89 @@ UTrack_CancelTag* SActionEditor_Sequence::BuildCancelTagTrack(const UActionInfoA
         }
     }
 
-    int32 FoundStart = -1;
-    int32 FoundEnd   = -1;
     struct SectionIndex
     {
         int32 StartFrame;
         int32 EndFrame;
     };
-    TArray<SectionIndex> SectionIndIices;
+    TArray<SectionIndex> SectionIndices;
+    int32 CurrentStart = -1;
     for (int32 i = 0; i < ActionAsset.FrameList.Num(); i++)
     {
-        if (ActionAsset.FrameList[i].CancelTags.Num() > 0 && FoundStart == -1)
+        const_cast<UActionInfoAsset&>(ActionAsset).FrameList[i].CancelTags.Sort([this](const FCancelTag& A, const FCancelTag& B)
+                                                 { return A.Tag.Compare(B.Tag) < 0; });
+
+        bool HasTags = ActionAsset.FrameList[i].CancelTags.Num() > 0;
+        if (HasTags && CurrentStart == -1)
         {
-            FoundStart = i;
+            // 当前帧有标签，且尚未开始记录段
+            CurrentStart = i;
         }
-        if (ActionAsset.FrameList[i].CancelTags.Num() == 0 && FoundStart >= 0)
+        else if (!HasTags && CurrentStart != -1)
         {
-            // section 末尾
-            SectionIndIices.Add({ FoundStart, i - 1 });
-            FoundStart = -1;
+            // 当前帧无标签，但之前有正在记录的段（说明段结束了）
+            SectionIndices.Add({ CurrentStart, i - 1 });
+            CurrentStart = -1;
         }
-        if (i == ActionAsset.FrameList.Num() - 1 && FoundStart >= 0)
+        else if (HasTags && CurrentStart != -1)
         {
-            // 最后一个 section
-            SectionIndIices.Add({ FoundStart, i + 1 });
+            auto& LastFrame = ActionAsset.FrameList[i - 1];
+            if (LastFrame.CancelTags.Num() != ActionAsset.FrameList[i].CancelTags.Num())
+            {
+                // 有标签，但与前一个有效段的内容发生了变化
+                SectionIndices.Add({ CurrentStart, i - 1 });
+                CurrentStart = i;
+            }
+            else
+            {
+                if (LastFrame.CancelTags.Num() != ActionAsset.FrameList[i].CancelTags.Num())
+                {
+                    // 有标签，但与前一个有效段的内容发生了变化
+                    SectionIndices.Add({ CurrentStart, i - 1 });
+                    CurrentStart = i;
+                }
+                else
+                {
+                    int32 Count = ActionAsset.FrameList[i].CancelTags.Num();
+                    auto TagA = LastFrame.CancelTags.GetData();
+                    auto TagB = ActionAsset.FrameList[i].CancelTags.GetData();
+                    bool IsEqual = true;
+                    while (Count)
+                    {
+                        if (!(TagA->Tag == TagB->Tag))
+                        {
+                            IsEqual = false;
+                            break;
+                        }
+
+                        ++TagA;
+                        ++TagB;
+                        --Count;
+                    }
+                    if (!IsEqual)
+                    {
+                        // 有标签，但与前一个有效段的内容发生了变化
+                        SectionIndices.Add({ CurrentStart, i - 1 });
+                        CurrentStart = i;
+                    }
+                }
+            }
         }
+    }
+    if (CurrentStart != -1)
+    {
+        SectionIndices.Add({ CurrentStart, ActionAsset.FrameList.Num() });
     }
     
     FFrameRate DisplayRate    = Sequencer->GetFocusedDisplayRate();
     FFrameRate TickResolution = Sequencer->GetFocusedTickResolution();
-    for (int32 i = 0; i < SectionIndIices.Num(); i++)
+    for (int32 i = 0; i < SectionIndices.Num(); i++)
     {
         FScopedTransaction Transaction(LOCTEXT("AddSectionTransactionText", "Add Section"));
         if (UMovieSceneSection* NewSection = NewTrack->CreateNewSection())
         {
             USection_CancelTag* S = Cast<USection_CancelTag>(NewSection);
-            S->TagList            = ActionAsset.FrameList[SectionIndIices[i].StartFrame].CancelTags;
+            S->TagList            = ActionAsset.FrameList[SectionIndices[i].StartFrame].CancelTags;
 
             int32 OverlapPriority = 0;
             //TMap<int32, int32> NewToOldRowIndices;
@@ -917,9 +970,9 @@ UTrack_CancelTag* SActionEditor_Sequence::BuildCancelTagTrack(const UActionInfoA
             NewTrack->Modify();
             //NewTrack->OnRowIndicesChanged(NewToOldRowIndices);
 
-            FFrameTime SourceStartTime = FFrameTime::FromDecimal(SectionIndIices[i].StartFrame);
+            FFrameTime SourceStartTime = FFrameTime::FromDecimal(SectionIndices[i].StartFrame);
             FFrameTime StartFrameTime  = ConvertFrameTime(SourceStartTime, DisplayRate, TickResolution);
-            FFrameTime SourceEndTime   = FFrameTime::FromDecimal(SectionIndIices[i].EndFrame);
+            FFrameTime SourceEndTime   = FFrameTime::FromDecimal(SectionIndices[i].EndFrame);
             FFrameTime EndFrameTime    = ConvertFrameTime(SourceEndTime, DisplayRate, TickResolution);
             NewSection->SetRange(TRange<FFrameNumber>(StartFrameTime.FrameNumber, EndFrameTime.FrameNumber));
 
@@ -1023,37 +1076,44 @@ UTrack_HitBox* SActionEditor_Sequence::BuildHitBoxTrack(const UActionInfoAsset& 
 
 UTrack_MoveInputAcceptance* SActionEditor_Sequence::BuildMoveInputAcceptanceTrack(const UActionInfoAsset& ActionAsset)
 {
-    int32 FoundStart = -1;
-    int32 FoundEnd   = -1;
     struct SectionIndex
     {
         int32 StartFrame;
         int32 EndFrame;
     };
-    TArray<SectionIndex> SectionIndIices;
-    float LastValue = 0.0f;
+    TArray<SectionIndex> SectionIndices;
+    int32 CurrentStart = -1;
     for (int32 i = 0; i < ActionAsset.FrameList.Num(); i++)
     {
-        float NowValue = ActionAsset.FrameList[i].InputAcceptance;
-        if ((NowValue > 0.0f || NowValue != LastValue) && FoundStart == -1)
+        bool HasTags = ActionAsset.FrameList[i].InputAcceptance != 0.0f;
+        if (HasTags && CurrentStart == -1)
         {
-            FoundStart = i;
-            LastValue  = NowValue;
+            // 当前帧有标签，且尚未开始记录段
+            CurrentStart = i;
         }
-        if ((NowValue == 0.0f || NowValue != LastValue) && FoundStart >= 0)
+        else if (!HasTags && CurrentStart != -1)
         {
-            // section 末尾
-            SectionIndIices.Add({ FoundStart, i - 1 });
-            FoundStart = -1;
-            LastValue  = NowValue;
+            // 当前帧无标签，但之前有正在记录的段（说明段结束了）
+            SectionIndices.Add({ CurrentStart, i - 1 });
+            CurrentStart = -1;
         }
-        if (i == ActionAsset.FrameList.Num() - 1 && FoundStart >= 0)
+        else if (HasTags && CurrentStart != -1)
         {
-            // 最后一个 section
-            SectionIndIices.Add({ FoundStart, i + 1 });
+            auto& LastFrame = ActionAsset.FrameList[i - 1];
+            if (LastFrame.InputAcceptance != ActionAsset.FrameList[i].InputAcceptance)
+            {
+                // 有标签，但与前一个有效段的内容发生了变化
+                SectionIndices.Add({ CurrentStart, i - 1 });
+                CurrentStart = i;
+            }
         }
     }
-if (SectionIndIices.Num() == 0)
+    if (CurrentStart != -1)
+    {
+        SectionIndices.Add({ CurrentStart, ActionAsset.FrameList.Num() });
+    }
+
+    if (SectionIndices.Num() == 0)
     {
         return nullptr;
     }
@@ -1076,24 +1136,21 @@ if (SectionIndIices.Num() == 0)
 
     FFrameRate DisplayRate    = Sequencer->GetFocusedDisplayRate();
     FFrameRate TickResolution = Sequencer->GetFocusedTickResolution();
-    int32 LastFrame           = -1;
-    for (int32 i = 0; i < SectionIndIices.Num(); i++)
+    for (int32 i = 0; i < SectionIndices.Num(); i++)
     {
         FScopedTransaction Transaction(LOCTEXT("AddSectionTransactionText", "Add Section"));
         if (USection_MoveInputAcceptance* NewSection = NewTrack->CreateNewMoveInputAcceptanceSection())
         {
-            NewSection->InputAcceptance = ActionAsset.FrameList[SectionIndIices[i].StartFrame].InputAcceptance;
+            NewSection->InputAcceptance = ActionAsset.FrameList[SectionIndices[i].StartFrame].InputAcceptance;
 
             int32 OverlapPriority = 0;
             NewTrack->Modify();
 
-            int32 StartFrame           = LastFrame >= SectionIndIices[i].StartFrame ? LastFrame + 1 : SectionIndIices[i].StartFrame;
-            FFrameTime SourceStartTime = FFrameTime::FromDecimal(StartFrame);
+            FFrameTime SourceStartTime = FFrameTime::FromDecimal(SectionIndices[i].StartFrame);
             FFrameTime StartFrameTime  = ConvertFrameTime(SourceStartTime, DisplayRate, TickResolution);
-            FFrameTime SourceEndTime   = FFrameTime::FromDecimal(SectionIndIices[i].EndFrame);
+            FFrameTime SourceEndTime   = FFrameTime::FromDecimal(SectionIndices[i].EndFrame);
             FFrameTime EndFrameTime    = ConvertFrameTime(SourceEndTime, DisplayRate, TickResolution);
             NewSection->SetRange(TRange<FFrameNumber>(StartFrameTime.FrameNumber, EndFrameTime.FrameNumber));
-            LastFrame = SectionIndIices[i].EndFrame;
 
             NewSection->SetOverlapPriority(OverlapPriority);
             NewSection->SetRowIndex(i);

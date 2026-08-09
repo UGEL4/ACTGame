@@ -51,6 +51,7 @@ public:
 	void TryAddInput(EKeyMap Key);
 	void TryAddDirectInput(FVector2D Input);
 	bool ActionOccur(const FActionCommand& Command);
+    bool ActionOccur(const FActionCommand& Command, FKeyInputRecord& OutData);
 
 private:
 	void UpdateCommand();

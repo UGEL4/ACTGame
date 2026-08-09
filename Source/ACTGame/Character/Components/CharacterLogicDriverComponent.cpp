@@ -47,6 +47,16 @@ void UCharacterLogicDriverComponent::TickComponent(float DeltaTime, ELevelTick T
 
 		InputToCommandComponent->TickLogic(CurrentLogicFrame);
 		ActionLogicComponent->TickLogic(CurrentLogicFrame);
+
+        // ÒÆ¶¯
+        /*FKeyInputRecord InputData;
+        if (InputToCommandComponent->ActionOccur(FActionCommand{ .keySequences = { EKeyMap::DirInput }, .ValidInFrameCount = 0 }, InputData))
+        {
+            float InputAcceptance = ActionLogicComponent->GetMoveInputAcceptance();
+            float InputX          = InputData.DirInput.X * InputAcceptance;
+            float InputY          = InputData.DirInput.Y * InputAcceptance;
+            Cast<AACTGameCharacter>(GetOwner())->DoMove(InputX, InputY);
+        }*/
         MovementComponent->TickComponent(FixedDeltaTime, TickType, &MovementComponent->PrimaryComponentTick);
 	}
 }

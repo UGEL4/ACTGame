@@ -279,3 +279,12 @@ void UActionLogicComponent::SetCurrentActionInfoByIndex(int32 index)
         }
     }
 }
+
+float UActionLogicComponent::GetMoveInputAcceptance() const
+{
+    if (CurrentFrame)
+    {
+        return CurrentFrame->InputAcceptance;
+    }
+    return 0.0f;
+}

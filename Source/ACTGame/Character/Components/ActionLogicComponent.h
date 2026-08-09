@@ -77,4 +77,6 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void SetCurrentActionInfoByIndex(int32 index);
+
+    float GetMoveInputAcceptance() const;
 };
