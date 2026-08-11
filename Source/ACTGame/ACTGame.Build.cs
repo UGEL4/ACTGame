@@ -1,5 +1,6 @@
 ﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
+using System.IO;
 using UnrealBuildTool;
 
 public class ACTGame : ModuleRules
@@ -21,7 +22,8 @@ public class ACTGame : ModuleRules
 			"GameplayStateTreeModule",
 			"UMG",
             "EnTT",
-            "EventPP"
+            "EventPP",
+            "ALSV4_CPP" // ALS-Community
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
@@ -33,8 +35,9 @@ public class ACTGame : ModuleRules
 			"ACTGame/Variant_Combat/AI",
 			"ACTGame/Variant_SideScrolling",
 			"ACTGame/Variant_SideScrolling/Gameplay",
-			"ACTGame/Variant_SideScrolling/AI"
-		});
+			"ACTGame/Variant_SideScrolling/AI",
+            //Path.Combine(ModuleDirectory, "../../Plugins/ALS-Community-main/Source")
+        });
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });

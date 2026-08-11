@@ -16,11 +16,11 @@ void UFrameComponent::BeginPlay()
 void UFrameComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-    AccumulateTime += DeltaTime;
-	while (AccumulateTime >= FixedDeltaTime)
-	{
-		AccumulateTime -= FixedDeltaTime;
-		CurrentLogicFrame++;
-	}
+    CurrentLogicFrame++;
+    /*AccumulateTime += DeltaTime;
+    while (AccumulateTime >= FixedDeltaTime)
+    {
+        AccumulateTime -= FixedDeltaTime;
+        CurrentLogicFrame++;
+    }*/
 }
