@@ -1,8 +1,8 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
-#include "Character/ALSBaseCharacter.h"
+#include "AlsCharacter.h"
 #include "Character/Components/ActionLogicComponent.h"
 #include "Character/Components/CharacterLogicDriverComponent.h"
 //#include "CoreMinimal.h"
@@ -23,13 +23,11 @@ DECLARE_LOG_CATEGORY_EXTERN(LogACTCharacterBase, Log, All);
  *  Implements a controllable orbiting camera
  */
 UCLASS(Blueprintable, BlueprintType)
-class AACTCharacterBase : public AALSBaseCharacter
+class AACTCharacterBase : public AAlsCharacter
 {
 	GENERATED_BODY()
 
 public:
-    AACTCharacterBase(const FObjectInitializer& ObjectInitializer);
-
-    virtual void RagdollStart() override;
+    AACTCharacterBase();
 };
 

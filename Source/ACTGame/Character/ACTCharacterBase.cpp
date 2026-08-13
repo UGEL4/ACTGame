@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "ACTCharacterBase.h"
 #include "Engine/EngineTypes.h"
@@ -16,18 +16,12 @@
 #include "Character/Components/ActionLogicComponent.h"
 #include "Character/Components/CharacterLogicDriverComponent.h"
 #include "World/ACTWorldSubsystem.h"
-#include "AI/ALSAIController.h"
 
 DEFINE_LOG_CATEGORY(LogACTCharacterBase);
 
-AACTCharacterBase::AACTCharacterBase(const FObjectInitializer& ObjectInitializer)
-    : Super(ObjectInitializer)
+AACTCharacterBase::AACTCharacterBase()
 {
-    AIControllerClass = AALSAIController::StaticClass();
 }
 
-void AACTCharacterBase::RagdollStart()
-{
-    Super::RagdollStart();
-}
+
 

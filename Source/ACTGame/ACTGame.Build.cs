@@ -23,7 +23,7 @@ public class ACTGame : ModuleRules
 			"UMG",
             "EnTT",
             "EventPP",
-            "ALSV4_CPP" // ALS-Community
+            "ALS" // ALS-Refactored
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
