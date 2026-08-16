@@ -23,10 +23,13 @@ public class ACTGame : ModuleRules
 			"UMG",
             "EnTT",
             "EventPP",
-            "ALS" // ALS-Refactored
-		});
+            "ALS", // ALS-Refactored
+            "ALSCamera"
+        });
 
-		PrivateDependencyModuleNames.AddRange(new string[] { });
+		PrivateDependencyModuleNames.AddRange(new string[] {
+            "EngineSettings"
+        });
 
 		PublicIncludePaths.AddRange(new string[] {
 			"ACTGame",
