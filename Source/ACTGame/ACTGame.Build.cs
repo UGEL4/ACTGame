@@ -24,7 +24,10 @@ public class ACTGame : ModuleRules
             "EnTT",
             "EventPP",
             "ALS", // ALS-Refactored
-            "ALSCamera"
+            "ALSCamera",
+            "GameplayTags",
+            "GameplayTasks",
+            "GameplayAbilities",
         });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
