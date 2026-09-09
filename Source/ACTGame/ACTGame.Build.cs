@@ -28,6 +28,9 @@ public class ACTGame : ModuleRules
             "GameplayTags",
             "GameplayTasks",
             "GameplayAbilities",
+            "AnimationModifiers",
+            "AnimationModifierLibrary",
+            "AnimationBlueprintLibrary"
         });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
