@@ -758,7 +758,7 @@ void SActionEditor_Sequence::OnActionChosen(const TArray<FAssetData>& Assets)
     }
     if (UActionInfoAsset* ActionAsset = Cast<UActionInfoAsset>(Obj))
     {
-        UE_LOG(LogTemp, Warning, TEXT("已加载："), *ActionAsset->ActionName.ToString());
+        UE_LOG(LogTemp, Warning, TEXT("已加载：%s"), *ActionAsset->ActionName.ToString());
         //ActionInfoAsset = ActionAsset;
         // 构造sequence
         UMovieScene* MovieScene = Sequencer->GetFocusedMovieSceneSequence()->GetMovieScene();

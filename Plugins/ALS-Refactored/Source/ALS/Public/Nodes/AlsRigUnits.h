@@ -6,15 +6,18 @@
 #include "Units/RigUnit.h"
 #include "AlsRigUnits.generated.h"
 
+/* void */
 USTRUCT(DisplayName = "Clamp 01", Meta = (Category = "ALS"))
 struct ALS_API FAlsRigVMFunction_Clamp01Float : public FRigVMFunction_MathFloatBase
 {
 	GENERATED_BODY()
 
 public:
+    /* void0 */
 	UPROPERTY(Meta = (Input))
 	float Value{0.0f};
 
+	/* void1 */
 	UPROPERTY(Meta = (Output))
 	float Result{0.0f};
 
@@ -23,19 +26,22 @@ public:
 	virtual void Execute() override;
 };
 
+/* void */
 USTRUCT(DisplayName = "Damper Exact (Vector)", Meta = (Category = "ALS"))
 struct ALS_API FAlsRigVMFunction_DamperExactVector : public FRigVMFunction_SimBase
 {
 	GENERATED_BODY()
 
 public:
+    /* void0 */
 	UPROPERTY(Meta = (Input))
 	FVector Target{ForceInit};
 
-	// HalfLife is the time it takes for the distance to the target to be reduced by half.
+	/// HalfLife is the time it takes for the distance to the target to be reduced by half.
 	UPROPERTY(Meta = (Input, ClampMin = 0, ForceUnits = "s"))
 	float HalfLife{1.0f};
 
+	/* void1 */
 	UPROPERTY(Transient, Meta = (Output))
 	FVector Current{ForceInit};
 
@@ -50,19 +56,22 @@ public:
 	virtual void Execute() override;
 };
 
+/* void */
 USTRUCT(DisplayName = "Damper Exact (Quaternion)", Meta = (Category = "ALS"))
 struct ALS_API FAlsRigVMFunction_DamperExactQuaternion : public FRigVMFunction_SimBase
 {
 	GENERATED_BODY()
 
 public:
+    /* void0 */
 	UPROPERTY(Meta = (Input))
 	FQuat Target{ForceInit};
 
-	// HalfLife is the time it takes for the distance to the target to be reduced by half.
+	/// HalfLife is the time it takes for the distance to the target to be reduced by half.
 	UPROPERTY(Meta = (Input, ClampMin = 0, ForceUnits = "s"))
 	float HalfLife{1.0f};
 
+	/* void1 */
 	UPROPERTY(Transient, Meta = (Output))
 	FQuat Current{ForceInit};
 
@@ -77,7 +86,7 @@ public:
 	virtual void Execute() override;
 };
 
-// Calculates the projection location and direction of the perpendicular to AC through B.
+/// Calculates the projection location and direction of the perpendicular to AC through B.
 USTRUCT(DisplayName = "Calculate Pole Vector", Meta = (Category = "ALS", NodeColor = "0.05 0.25 0.05"))
 struct ALS_API FAlsRigUnit_CalculatePoleVector : public FRigUnit
 {
@@ -106,7 +115,7 @@ public:
 	FVector ItemBProjectionLocation{ForceInit};
 
 	UPROPERTY(Transient, Meta = (Output))
-	FVector PoleDirection{FVector::XAxisVector};
+	FVector PoleDirection{FVector::ForwardVector};
 
 	UPROPERTY(Transient)
 	FCachedRigElement CachedItemA;
@@ -123,6 +132,7 @@ public:
 	virtual void Execute() override;
 };
 
+/* void */
 USTRUCT(DisplayName = "Is Game World", Meta = (Category = "ALS"))
 struct ALS_API FAlsRigVMFunction_IsGameWorld : public FRigVMFunction_ControlFlowBase
 {
@@ -132,12 +142,15 @@ public:
 	UPROPERTY(Transient, DisplayName = "Execute", Meta = (Input))
 	FRigVMExecuteContext ExecuteContext;
 
+	/* void0 */
 	UPROPERTY(Transient, Meta = (Output))
 	FRigVMExecuteContext True;
 
+	/* void1 */
 	UPROPERTY(Transient, Meta = (Output))
 	FRigVMExecuteContext False;
 
+	/* void2 */
 	UPROPERTY(meta=(Output))
 	FRigVMExecuteContext Completed;
 

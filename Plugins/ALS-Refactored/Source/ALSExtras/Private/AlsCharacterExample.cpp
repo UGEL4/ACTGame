@@ -162,7 +162,7 @@ void AAlsCharacterExample::Input_OnJump(const FInputActionValue& ActionValue)
 			return;
 		}
 
-		if (StartMantlingGrounded())
+		if (StartMantling())
 		{
 			return;
 		}
@@ -198,7 +198,7 @@ void AAlsCharacterExample::Input_OnRoll()
 {
 	static constexpr auto PlayRate{1.3f};
 
-	StartRolling(PlayRate);
+	StartRollingGrounded(PlayRate);
 }
 
 void AAlsCharacterExample::Input_OnRotationMode()
