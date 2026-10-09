@@ -107,5 +107,8 @@ public:
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Player")
 	bool IsPlayer = true;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Player")
+    float InputDirection;
 };
 

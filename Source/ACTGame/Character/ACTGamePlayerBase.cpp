@@ -11,6 +11,8 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 AACTGamePlayerBase::AACTGamePlayerBase()
 {
@@ -105,15 +107,43 @@ void AACTGamePlayerBase::DoMove(float Right, float Forward)
 {
 	if (GetController() != nullptr)
 	{
+        FVector MakeTemp(Forward, Right, 0);
+        //FRotator Rot   = UKismetMathLibrary::MakeRotFromX(GetControlRotation().RotateVector(Temp));
+        const FRotator ControlRotation = GetControlRotation();
+        FRotator RotFromX              = UKismetMathLibrary::MakeRotFromX(UKismetMathLibrary::GreaterGreater_VectorRotator(MakeTemp, ControlRotation));
+        InputDirection                 = UKismetMathLibrary::NormalizedDeltaRotator(RotFromX, GetActorRotation()).Yaw;
+
+        //UKismetSystemLibrary::DrawDebugCoordinateSystem(this, GetActorLocation(), RotFromX, 200.f, 0.0f, 10.f);
+
+        float Yaw = UKismetMathLibrary::ComposeRotators(GetControlRotation(), FRotator(0, InputDirection > 0 ? -1 : 1, 0)).Yaw;
+
+		FVector WorldInput = ControlRotation.RotateVector(FVector(Forward, Right, 0));
+        WorldInput.Z       = 0;
+        WorldInput.Normalize();
+
+        const FVector ActorRight   = GetActorRightVector();
+        const FVector ActorForward = GetActorForwardVector();
+
+        float RightDot   = FVector::DotProduct(WorldInput, ActorRight);
+        float ForwardDot = FVector::DotProduct(WorldInput, ActorForward);
+        InputDirection   = FMath::RadiansToDegrees(FMath::Atan2(RightDot, ForwardDot));
+        if (FMath::Abs(FMath::Abs(InputDirection) - 180.f) < 1.f)
+        {
+            // 用原始输入向量的 Right 分量决定方向，避免依赖浮点符号
+            InputDirection = (Right >= 0.f) ? 180.f : -180.f;
+        }
+
 		// find out which way is forward
 		const FRotator Rotation = GetController()->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
 
 		// get forward vector
 		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+        //const FVector ForwardDirection = UKismetMathLibrary::GetForwardVector(FRotator(0, Yaw, 0));
 
 		// get right vector 
 		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+        //const FVector RightDirection = UKismetMathLibrary::GetRightVector(FRotator(0, Yaw, 0));
 
 		// add movement 
 		AddMovementInput(ForwardDirection, Forward);
