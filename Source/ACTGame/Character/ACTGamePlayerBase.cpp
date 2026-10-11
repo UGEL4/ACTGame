@@ -113,7 +113,7 @@ void AACTGamePlayerBase::DoMove(float Right, float Forward)
         FRotator RotFromX              = UKismetMathLibrary::MakeRotFromX(UKismetMathLibrary::GreaterGreater_VectorRotator(MakeTemp, ControlRotation));
         InputDirection                 = UKismetMathLibrary::NormalizedDeltaRotator(RotFromX, GetActorRotation()).Yaw;
 
-        //UKismetSystemLibrary::DrawDebugCoordinateSystem(this, GetActorLocation(), RotFromX, 200.f, 0.0f, 10.f);
+        UKismetSystemLibrary::DrawDebugCoordinateSystem(this, GetActorLocation(), RotFromX, 200.f, 0.0f, 10.f);
 
         float Yaw = UKismetMathLibrary::ComposeRotators(GetControlRotation(), FRotator(0, InputDirection > 0 ? -1 : 1, 0)).Yaw;
 
