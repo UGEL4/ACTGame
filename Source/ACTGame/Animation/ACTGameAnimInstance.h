@@ -4,6 +4,7 @@
 
 #include "Animation/AnimInstance.h"
 // #include "GameplayEffectTypes.h"
+#include "AlsAnimationInstance.h"
 #include "ACTGameAnimInstance.generated.h"
 
 class UAbilitySystemComponent;
@@ -15,7 +16,7 @@ class UAbilitySystemComponent;
  *	The base game animation instance class used by this project.
  */
 UCLASS(Config = Game)
-class UACTGameAnimInstance : public UAnimInstance
+class UACTGameAnimInstance : public UAlsAnimationInstance
 {
 	GENERATED_BODY()
 
