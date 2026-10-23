@@ -161,7 +161,11 @@ protected:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "ACT|State")
 	EACTRotationMode RotationMode = EACTRotationMode::VelocityDirection;
 
-	UPROPERTY(Transient)
+	/** 动画层读取入口。ABP 用 Property Access 直接读这个结构体的成员
+	 *  （路径：CharMoveComp.LocomotionState.Xxx），所以必须是 BlueprintReadOnly ——
+	 *  否则编辑器里根本选不到这条路径。
+	 *  C++ 侧要零拷贝就用 GetLocomotionState()（不加 UFUNCTION，UFUNCTION 不能返回引用）。 */
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "ACT|State")
 	FActLocomotionState LocomotionState;
 
 	/** 目标偏航角（度）。 */

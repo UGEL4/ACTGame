@@ -2,7 +2,8 @@
 //
 // 设计约束（务必先读）：
 //   1. 这是 C++ 与动画蓝图之间 **唯一** 的接口。动画层不允许 Cast 角色或移动组件去取数据。
-//   2. 全部字段都是「已算好的标量」。物理推导（如落地时间）在 C++ 里完成，动画层不重复计算。
+//   2. 只放"物理侧才拿得到"的信号（例如落地时间要射线/重力推导），
+//      **不做纯数学推导** —— 那些放动画蓝图用数学节点算，改参数不用重编译。
 //   3. 字段总数控制在 14 个以内。每加一个字段，动画蓝图就多一条分支 —— 这是 ALS 复杂度失控的根源。
 //   4. 不依赖动画曲线。所有表现参数由这里算出来，而不是从 AnimSequence 里读。
 
@@ -61,11 +62,15 @@ enum class EACTRotationMode : uint8
 };
 
 /**
- * 每帧从移动组件/角色拷贝给动画层的只读快照。
+ * 移动组件每帧算好的状态。由组件持有（`UACTCharacterMovementComponent::LocomotionState`），
+ * 动画蓝图通过 **Property Access** 直接读，不再由动画实例拷贝一份。
  *
- * 使用方式（UACTAnimInstance）：
- *   NativeUpdateAnimation (GT)        -> LocomotionState = MoveComp->BuildLocomotionState();
- *   NativeThreadSafeUpdateAnimation (WT) -> 只读 LocomotionState 做纯数学，算混合权重
+ * 使用方式：
+ *   Property Access 路径：`CharMoveComp.LocomotionState.Speed` / `.TimeToLand` / `.Mode` ...
+ *   C++ 侧：`Movement->GetLocomotionState()`（返回引用，零拷贝）
+ *
+ * 注意：本结构体是"物理侧信号"，不是"动画层计算结果"。
+ * 混合权重、Lean、步幅缩放这类纯数学，一律在 ABP 里用节点算，见 Docs/ABP-v1-Wiring.md。
  */
 USTRUCT(BlueprintType)
 struct FActLocomotionState

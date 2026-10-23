@@ -30,7 +30,8 @@ public class ACTGame : ModuleRules
             "GameplayAbilities",
             "AnimationModifiers",
             "AnimationModifierLibrary",
-            "AnimationBlueprintLibrary"
+            "AnimationBlueprintLibrary",
+            "AnimationLocomotionLibraryRuntime" // UAnimCharacterMovementLibrary::PredictGroundMovementStopLocation
         });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
