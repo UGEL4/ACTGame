@@ -190,7 +190,10 @@ void UACTCharacterMovementComponent::SetAutoYawUpdate(bool bEnable)
 
 void UACTCharacterMovementComponent::SetRotationInterpSpeed(float NewSpeed)
 {
-	RotationInterpSpeedOverride = FMath::Max(0.0f, NewSpeed);
+	//RotationInterpSpeedOverride = FMath::Max(0.0f, NewSpeed);
+    // 负数 = 恢复 RotationMode 默认值。不能钳到 0 —— 0 的语义是「冻结旋转」，
+    // 钳过去会让 Pivot / 攻击结束后无法恢复默认转向速度。
+    RotationInterpSpeedOverride = NewSpeed < 0.0f ? -1.0f : NewSpeed;
 }
 
 float UACTCharacterMovementComponent::GetRotationInterpSpeed() const
