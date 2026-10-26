@@ -99,6 +99,10 @@ protected:
 
 	virtual void Input_OnRoll();
 
+	/** 移动组件请求急转身。TurnAngle 为剩余转角（度，正 = 向左）。 */
+	UFUNCTION()
+	void HandlePivotRequested(float TurnAngle);
+
 	// ================================================================ 组件
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
@@ -165,6 +169,20 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Action", Meta = (ClampMin = 0.1f))
 	float RollPlayRate = 1.3f;
+
+	/**
+	 * 急转身（180° 反打）蒙太奇。移动组件判定"玩家真的反打了"时通过 OnPivotRequested 触发。
+	 *
+	 * 为什么必须是蒙太奇：这类 clip 自带 180° 的 root 旋转，只有蒙太奇的 root motion 会
+	 * 真正驱动胶囊旋转（AnimInstance 默认 RootMotionMode 是 RootMotionFromMontagesOnly，
+	 * 状态机里的 root motion 是被忽略的）。用状态机播的话，身体在 clip 里转了 180°，
+	 * 胶囊没转，结果就是"人和朝向对不上"。
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Action", Meta = (DisplayThumbnail = false))
+	TObjectPtr<UAnimMontage> PivotMontageLeft;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input|Action", Meta = (DisplayThumbnail = false))
+	TObjectPtr<UAnimMontage> PivotMontageRight;
 
 	// ================================================================ 运行时状态
 

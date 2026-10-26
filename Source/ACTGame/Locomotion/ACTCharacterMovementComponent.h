@@ -20,6 +20,14 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogACTMovement, Log, All);
 
+/**
+ * 请求播放一次 pivot（急转身）动画。参数是剩余转向角（度，正 = 向左）。
+ *
+ * 用事件而不是每帧查询的 bool：pivot 是一次性离散行为，必须"触发一次、播一次"。
+ * 用 bool 让外部轮询，很容易在状态机里重复读到 true 而连播。
+ */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FACTPivotRequested, float, TurnAngle);
+
 UCLASS()
 class ACTGAME_API UACTCharacterMovementComponent : public UCharacterMovementComponent
 {
@@ -98,11 +106,33 @@ public:
 	UFUNCTION(BlueprintPure, Category = "ACT|Locomotion")
 	bool IsLanding() const { return LandingTimer > 0.0f; }
 
+	// ================================================================ 转向
+
+	/** 请求一次 pivot 动画。目前只有移动组件自己发（见 UpdateTurnState），保留 BP 可绑定。 */
+	UPROPERTY(BlueprintAssignable, Category = "ACT|Locomotion")
+	FACTPivotRequested OnPivotRequested;
+
+	/** 还需要转多少度（有符号，正 = 向左）。= 目标朝向 − 当前朝向。 */
+	UFUNCTION(BlueprintPure, Category = "ACT|Locomotion")
+	float GetTurnAngle() const;
+
+	/** 是否处于"大角度转向"（|TurnAngle| > SharpTurnAngleThreshold）。 */
+	UFUNCTION(BlueprintPure, Category = "ACT|Locomotion")
+	bool IsSharpTurning() const;
+
+	/** 当前转向导致的速度折扣（0~1）。1 = 不受影响。调试用。 */
+	UFUNCTION(BlueprintPure, Category = "ACT|Locomotion")
+	float GetTurnSpeedScale() const { return TurnSpeedScale; }
+
 protected:
 	// ================================================================ 内部更新
 
 	/** 根据 RotationMode 推导本帧的目标偏航角。必须在 Super::TickComponent 之前调用。 */
-	void UpdateDesiredYaw();
+	void UpdateDesiredYaw(float DeltaTime);
+
+	/** 转向分级：稳定性计时、pivot 判定、速度折扣。必须在 UpdateDesiredYaw 之后、
+	 *  UpdateGaitParameters 之前调用（后者要用 TurnSpeedScale）。 */
+	void UpdateTurnState(float DeltaTime);
 
 	/** 把 GaitSettings 里的时间换算成 MaxAcceleration / BrakingDecelerationWalking。 */
 	void UpdateGaitParameters(float DeltaTime);
@@ -137,6 +167,48 @@ protected:
 	/** 速度低于此值（cm/s）时不再更新目标偏航角，避免静止时抖动。 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Rotation", Meta = (ClampMin = 0.0f, ForceUnits = "cm/s"))
 	float MinSpeedToOrient = 5.0f;
+
+	// ---------------------------------------------------------------- 大角度转向 / 180 反打
+
+	/** 超过这个角度开始提速转向（度）。小角度用基础速度，避免直线奔跑时左右微调过冲。 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ClampMax = 180.0f, ForceUnits = "deg"))
+	float SharpTurnAngleThreshold = 45.0f;
+
+	/** 大角度时的旋转速度（deg/s）。180° 用 1080 约 0.17 秒转完；540 要 0.33 秒，明显"舍不得转身"。 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ForceUnits = "deg/s"))
+	float SharpTurnInterpSpeed = 1080.0f;
+
+	/** |TurnAngle| 超过这个角度才考虑请求 pivot 动画（度）。 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ClampMax = 180.0f, ForceUnits = "deg"))
+	float PivotAngleThreshold = 140.0f;
+
+	/** 速度低于此值（cm/s）不播 pivot —— 慢速转身用上面的提速旋转就够了，不需要专用 clip。 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ForceUnits = "cm/s"))
+	float PivotMinSpeed = 200.0f;
+
+	/**
+	 * 输入方向变化率低于此值（deg/s）才认为玩家"已经选定"新方向。
+	 * 这是区分「摇杆绕圈」和「真的反打」的唯一可靠信号：
+	 * 绕圈时角速度持续偏高，反打是跳一下然后立刻归零。
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ForceUnits = "deg/s"))
+	float TurnStableRate = 120.0f;
+
+	/** 输入方向稳定多久之后才允许触发 pivot（秒）。防止瞬时的方向抖动就播动画。 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ForceUnits = "s"))
+	float TurnStableDwell = 0.1f;
+
+	/** 两次 pivot 的最小间隔（秒）。必须 >= pivot 蒙太奇时长，否则连续快速转身会变成蒙太奇连播。 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ForceUnits = "s"))
+	float PivotCooldown = 0.9f;
+
+	/** 开始压低速度的转向角度（度）。 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ClampMax = 180.0f, ForceUnits = "deg"))
+	float TurnBrakeStartAngle = 60.0f;
+
+	/** 180° 反向时速度保留的比例。这个值决定转身时"掉多少速"，是最影响观感的一个参数。 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ClampMax = 1.0f))
+	float TurnBrakeMinScale = 0.15f;
 
 	/** 落地缓冲时长（秒），决定 Land 动画能播多久。 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Ground", Meta = (ClampMin = 0.0f, ForceUnits = "s"))
@@ -205,4 +277,28 @@ protected:
 
 	UPROPERTY(Transient)
 	float SmoothedBrakeAmount = 0.0f;
+
+	// ---------------------------------------------------------------- 转向状态
+
+	/** 输入方向的角速度（deg/s，取绝对值并平滑）。用于区分"绕圈"和"反打"。 */
+	UPROPERTY(Transient)
+	float SmoothedTurnRate = 0.0f;
+
+	UPROPERTY(Transient)
+	float PrevInputYaw = 0.0f;
+
+	UPROPERTY(Transient)
+	bool bHasPrevInputYaw = false;
+
+	/** 输入方向已经稳定了多久（秒）。超过 TurnStableDwell 才允许 pivot。 */
+	UPROPERTY(Transient)
+	float TurnStableTimer = 0.0f;
+
+	/** pivot 冷却剩余时间（秒）。 */
+	UPROPERTY(Transient)
+	float PivotCooldownTimer = 0.0f;
+
+	/** 本帧的转向速度折扣，乘在 MaxWalkSpeed 上。 */
+	UPROPERTY(Transient)
+	float TurnSpeedScale = 1.0f;
 };

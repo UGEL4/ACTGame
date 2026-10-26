@@ -14,6 +14,12 @@ namespace
 	constexpr float AccelerationSmoothingRate = 14.0f;
 	constexpr float BrakeSmoothingRate = 10.0f;
 
+	/** 输入方向角速度的平滑系数（1/s）。故意偏低：要滤掉摇杆噪声，只保留"跳变"。 */
+	constexpr float TurnRateSmoothingRate = 12.0f;
+
+	/** 转向速度折扣的平滑系数（1/s）。太快会让速度曲线出现台阶。 */
+	constexpr float TurnSpeedSmoothingRate = 8.0f;
+
 	/** 判定"在减速"的速度变化阈值（cm/s²）。低于它认为是噪声。 */
 	constexpr float BrakingAccelThreshold = 20.0f;
 }
@@ -97,8 +103,10 @@ void UACTCharacterMovementComponent::BeginPlay()
 
 void UACTCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	// 先定方向、再定速度参数，最后交给引擎做位移。
-	UpdateDesiredYaw();
+	// 先定方向、再定转向分级、再定速度参数，最后交给引擎做位移。
+	// 顺序不能换：UpdateGaitParameters 要读 UpdateTurnState 算出的 TurnSpeedScale。
+	UpdateDesiredYaw(DeltaTime);
+	UpdateTurnState(DeltaTime);
 	UpdateGaitParameters(DeltaTime);
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -118,9 +126,22 @@ void UACTCharacterMovementComponent::PhysicsRotation(float DeltaTime)
 	}
 
 	// 蒙太奇 root motion 自己带旋转，此时插一脚会导致朝向被覆盖或抖一下。
+	// 但缓存必须跟着走：否则 RM 转完之后 CurrentYawAngle 还是旧值，下一帧 FixedTurn
+	// 会从旧角度出发把角色硬拽回去（表现为翻滚/转身结束时"回弹一下"）。
 	if (HasAnimRootMotion())
 	{
+		CurrentYawAngle = CharacterOwner->GetActorRotation().Yaw;
 		return;
+	}
+
+	// 同上，只是来源更广：传送、SetActorRotation、蓝图直接改朝向都会让缓存变脏。
+	// 阈值 1° 是为了不把 PhysicsRotation 自己的浮点误差当成漂移。
+	{
+		const float ActorYaw = CharacterOwner->GetActorRotation().Yaw;
+		if (FMath::Abs(FRotator::NormalizeAxis(ActorYaw - CurrentYawAngle)) > 1.0f)
+		{
+			CurrentYawAngle = ActorYaw;
+		}
 	}
 
 	if (bInstantYaw)
@@ -131,7 +152,19 @@ void UACTCharacterMovementComponent::PhysicsRotation(float DeltaTime)
 		return;
 	}
 
-	const float InterpSpeed = GetRotationInterpSpeed();
+	float InterpSpeed = GetRotationInterpSpeed();
+
+	// 大角度提速：基础 540deg/s 转 180° 要 0.33 秒，看起来像"舍不得转身"；
+	// 1080 只要 0.17 秒。用插值而不是硬切，避免转到一半突然加速。
+	// 注意覆盖值优先 —— 攻击锁朝向时 SetRotationInterpSpeed(0) 不能被这里顶掉。
+	if (RotationInterpSpeedOverride < 0.0f)
+	{
+		const float AbsOffset = FMath::Abs(FRotator::NormalizeAxis(TargetYawAngle - CurrentYawAngle));
+		const float SpeedBlend = FMath::Clamp(
+			(AbsOffset - SharpTurnAngleThreshold) / FMath::Max(1.0f, 180.0f - SharpTurnAngleThreshold), 0.0f, 1.0f);
+		InterpSpeed = FMath::Lerp(InterpSpeed, SharpTurnInterpSpeed, SpeedBlend);
+	}
+
 	if (InterpSpeed <= 0.0f)
 	{
 		return;
@@ -148,7 +181,7 @@ void UACTCharacterMovementComponent::PhysicsRotation(float DeltaTime)
 	MoveUpdatedComponent(FVector::ZeroVector, FQuat(FRotator(0.0f, CurrentYawAngle, 0.0f)), false);
 }
 
-void UACTCharacterMovementComponent::UpdateDesiredYaw()
+void UACTCharacterMovementComponent::UpdateDesiredYaw(float DeltaTime)
 {
 	if (!CharacterOwner || !bAutoUpdateYaw)
 	{
@@ -164,12 +197,112 @@ void UACTCharacterMovementComponent::UpdateDesiredYaw()
 		return;
 	}
 
-	// VelocityDirection：朝速度方向。速度过低时保持上一次的目标角，
-	// 否则停下来那一刻速度方向会归零 → 目标角乱蹦 → 角色原地抖。
-	if (Velocity.SizeSquared2D() > FMath::Square(MinSpeedToOrient))
+	// ---------------------------------------------------------------- 目标方向
+	// VelocityDirection 模式：用「输入意图」而不是速度方向。两个理由：
+	//
+	// 1. 速度方向在反向瞬间会穿过 0，那一刻方向纯是数值噪声，目标角会乱蹦。
+	// 2. 更要命的：玩家把摇杆从后推到前，意图立刻变了，但速度要 0.6 秒才真正掉头
+	//    （TimeToMaxSpeed 0.35 + TimeToStop 0.3）。用速度做目标，角色必须"等速度转过来"
+	//    才开始转身 —— 这就是转身慢半拍、看起来像被拖着的根本原因。
+	//
+	// GetLastMovementInputVector() 是上一帧被 ConsumeMovementInputVector 消费掉的输入（世界空间），
+	// 引擎注释明确写了"动画更新应该用它"，且在 TickComponent 前后读都有效。
+	const FVector InputVector = CharacterOwner->GetLastMovementInputVector();
+	if (InputVector.SizeSquared2D() > 0.01f)
 	{
-		TargetYawAngle = Velocity.ToOrientationRotator().Yaw;
+		TargetYawAngle = FRotator::NormalizeAxis(InputVector.ToOrientationRotator().Yaw);
 	}
+	else if (Velocity.SizeSquared2D() > FMath::Square(MinSpeedToOrient))
+	{
+		// 松手滑行阶段没输入意图，保持"往哪滑就往哪"，不要突然回头。
+		TargetYawAngle = FRotator::NormalizeAxis(Velocity.ToOrientationRotator().Yaw);
+	}
+	// 两者都没有：保持上一次的目标角（静止时不要抖）。
+
+	// ---------------------------------------------------------------- 输入方向角速度
+	// 用来区分两种完全不同的行为，这是处理"不断快速转身"的关键信号：
+	//   绕圈/搓摇杆 → 角速度持续偏高
+	//   反向反打   → 跳一下就归零，然后稳定在新方向上
+	if (bHasPrevInputYaw && DeltaTime > KINDA_SMALL_NUMBER)
+	{
+		const float RawRate = FMath::Abs(FRotator::NormalizeAxis(TargetYawAngle - PrevInputYaw)) / DeltaTime;
+		SmoothedTurnRate = FMath::FInterpTo(SmoothedTurnRate, RawRate, DeltaTime, TurnRateSmoothingRate);
+	}
+
+	PrevInputYaw = TargetYawAngle;
+	bHasPrevInputYaw = true;
+}
+
+void UACTCharacterMovementComponent::UpdateTurnState(float DeltaTime)
+{
+	if (!CharacterOwner)
+	{
+		return;
+	}
+
+	PivotCooldownTimer = FMath::Max(0.0f, PivotCooldownTimer - DeltaTime);
+
+	// 用同一帧的权威值算角度，不要读 LocomotionState.YawOffset（那是上一帧的快照）。
+	const float TurnAngleNow = FRotator::NormalizeAxis(TargetYawAngle - CharacterOwner->GetActorRotation().Yaw);
+	const float AbsOffset = FMath::Abs(TurnAngleNow);
+
+	// ---------------------------------------------------------------- 方向稳定性
+	if (SmoothedTurnRate < TurnStableRate)
+	{
+		TurnStableTimer += DeltaTime;
+	}
+	else
+	{
+		TurnStableTimer = 0.0f;
+	}
+
+	// ---------------------------------------------------------------- pivot 判定
+	// 四个门必须同时满足，缺一个都会在"不断快速转身"时炸：
+	//   1. 角度够大       —— 小角度不需要专用 clip
+	//   2. 速度够快       —— 慢速用提速旋转就够了
+	//   3. 方向已稳定     —— 排除摇杆绕圈/乱搓
+	//   4. 冷却已过       —— 保证 pivot 不会被连播
+	// 第 3 条是核心：只要玩家还在转摇杆，就永远不会播 pivot，转身完全交给
+	// 连续旋转处理（无状态、天然抗抖动）。
+	if (PivotCooldownTimer <= 0.0f
+		&& AbsOffset > PivotAngleThreshold
+		&& Velocity.Size2D() > PivotMinSpeed
+		&& TurnStableTimer >= TurnStableDwell
+		&& IsMovingOnGround())
+	{
+		PivotCooldownTimer = PivotCooldown;
+		TurnStableTimer = 0.0f;
+
+		UE_LOG(LogACTMovement, Verbose, TEXT("[%s] Pivot request: angle=%.1f speed=%.0f"),
+			*GetNameSafe(CharacterOwner), TurnAngleNow, Velocity.Size2D());
+
+		OnPivotRequested.Broadcast(TurnAngleNow);
+	}
+
+	// ---------------------------------------------------------------- 速度折扣
+	// 180° 反打时如果保持 500cm/s，胶囊 0.17 秒转过去，脚完全跟不上 —— 就是在冰上打转。
+	// 按角度把最大速度压下去，"转身"变成"刹车 + 转身"，pivot clip 的支撑脚才有意义。
+	// 这个折扣是连续函数，不是状态机：绕圈时它自然维持在低位，不会抖。
+	const float BrakeAlpha = FMath::Clamp(
+		(AbsOffset - TurnBrakeStartAngle) / FMath::Max(1.0f, 180.0f - TurnBrakeStartAngle), 0.0f, 1.0f);
+	const float TargetScale = FMath::Lerp(1.0f, TurnBrakeMinScale, BrakeAlpha);
+
+	TurnSpeedScale = FMath::FInterpTo(TurnSpeedScale, TargetScale, DeltaTime, TurnSpeedSmoothingRate);
+}
+
+float UACTCharacterMovementComponent::GetTurnAngle() const
+{
+	if (!CharacterOwner)
+	{
+		return 0.0f;
+	}
+
+	return FRotator::NormalizeAxis(TargetYawAngle - CharacterOwner->GetActorRotation().Yaw);
+}
+
+bool UACTCharacterMovementComponent::IsSharpTurning() const
+{
+	return FMath::Abs(GetTurnAngle()) > SharpTurnAngleThreshold;
 }
 
 void UACTCharacterMovementComponent::SetTargetYawAngle(float NewTargetYaw, bool bInstant)
@@ -261,8 +394,12 @@ void UACTCharacterMovementComponent::UpdateGaitParameters(float DeltaTime)
 		SmoothedMaxSpeed = FMath::FInterpTo(SmoothedMaxSpeed, Settings.MaxSpeed, DeltaTime, 1.0f / GaitTransitionTime);
 	}
 
-	MaxWalkSpeed = SmoothedMaxSpeed;
-	MaxWalkSpeedCrouched = SmoothedMaxSpeed * FMath::Clamp(CrouchSpeedScale, 0.0f, 1.0f);
+	// 转向折扣只乘在"最终上限"上，不回写 SmoothedMaxSpeed ——
+	// 否则折扣会被步态插值平滑两次，转身结束时速度恢复会拖一条长尾。
+	// 效果：MaxWalkSpeed 降低 → CalcVelocity 里的 IsExceedingMaxSpeed 触发正常刹车
+	// （BrakingDecelerationWalking），所以是"减速"而不是"硬钳"。
+	MaxWalkSpeed = SmoothedMaxSpeed * TurnSpeedScale;
+	MaxWalkSpeedCrouched = SmoothedMaxSpeed * FMath::Clamp(CrouchSpeedScale, 0.0f, 1.0f) * TurnSpeedScale;
 
 	// 核心换算：a = Δv / t
 	MaxAcceleration = Settings.MaxSpeed / FMath::Max(Settings.TimeToMaxSpeed, 0.01f);

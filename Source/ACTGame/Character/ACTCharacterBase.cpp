@@ -1,7 +1,9 @@
 ﻿#include "ACTCharacterBase.h"
 
+#include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Camera/CameraComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
@@ -68,6 +70,39 @@ void AACTCharacterBase::PostInitializeComponents()
 			     "检查构造函数里的 SetDefaultSubobjectClass，或者蓝图里是否覆盖了移动组件类。"),
 			*GetNameSafe(this));
 	}
+	else
+	{
+		// 用事件而不是每帧轮询：pivot 是物理侧判定、动画侧执行，两边都不该知道对方的细节。
+		ACTMovement->OnPivotRequested.AddDynamic(this, &AACTCharacterBase::HandlePivotRequested);
+	}
+}
+
+void AACTCharacterBase::HandlePivotRequested(float TurnAngle)
+{
+	// 已经在播别的动作（翻滚、攻击）就不要插队 —— 那些蒙太奇自己带 root motion，
+	// 两个 RM 叠加会把胶囊转飞。
+	if (const UAnimInstance* AnimInstance = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr)
+	{
+		if (AnimInstance->IsAnyMontagePlaying())
+		{
+			return;
+		}
+	}
+
+	// 正 Yaw = 向左转（UE 的 yaw 逆时针为正）。所以 TurnAngle > 0 播左转版本。
+	const bool bTurnLeft = TurnAngle > 0.0f;
+	UAnimMontage* Montage = bTurnLeft ? PivotMontageLeft : PivotMontageRight;
+
+	if (!IsValid(Montage))
+	{
+		// 没配资产不是错误：此时只靠旋转提速 + 速度折扣完成转身，观感差一些但能用。
+		UE_LOG(LogACTCharacterBase, Verbose,
+			TEXT("[%s] 未设置 %s，只用旋转完成 %.0f 度转身。"),
+			*GetNameSafe(this), bTurnLeft ? TEXT("PivotMontageLeft") : TEXT("PivotMontageRight"), TurnAngle);
+		return;
+	}
+
+	PlayAnimMontage(Montage, 1.0f);
 }
 
 // ==================================================================== 控制器 / 输入上下文
