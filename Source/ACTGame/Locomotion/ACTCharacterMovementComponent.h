@@ -184,7 +184,22 @@ protected:
 
 	/** 速度低于此值（cm/s）不播 pivot —— 慢速转身用上面的提速旋转就够了，不需要专用 clip。 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ForceUnits = "cm/s"))
-	float PivotMinSpeed = 200.0f;
+	float PivotMinSpeed = 350.0f;
+
+	/**
+	 * 速度高于此值（cm/s）也不播 pivot。
+	 *
+	 * **这是必须的上限，不是可选项。** pivot clip 的 root motion 自带"跑一段 → 转身 → 再跑一段"的
+	 * 完整位移，它是按**某一个确定速度** K 的。而蒙太奇期间 CMC 的 Velocity 会被
+	 * `ConstrainAnimRootMotionVelocity()` 直接替换成 root motion 速度
+	 * （`CharacterMovementComponent.cpp:2952-2969`），所以进入速度只要和 clip 不匹配，
+	 * 就会在蒙太奇第一帧看到速度突变。
+	 *
+	 * 默认 350~650 是为 jog（500）准备的窗口。Sprint(800) 没有对应的 sprint pivot 资产，
+	 * 会被这个上限挡掉，退回"减速 + 提速旋转"。
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ForceUnits = "cm/s"))
+	float PivotMaxSpeed = 650.0f;
 
 	/**
 	 * 输入方向变化率低于此值（deg/s）才认为玩家"已经选定"新方向。

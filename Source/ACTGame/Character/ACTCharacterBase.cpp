@@ -77,16 +77,14 @@ void AACTCharacterBase::PostInitializeComponents()
 	}
 }
 
-void AACTCharacterBase::HandlePivotRequested(float TurnAngle)
+void AACTCharacterBase::HandlePivotRequested_Implementation(float TurnAngle)
 {
 	// 已经在播别的动作（翻滚、攻击）就不要插队 —— 那些蒙太奇自己带 root motion，
-	// 两个 RM 叠加会把胶囊转飞。
-	if (const UAnimInstance* AnimInstance = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr)
+	// 两个 RM 叠加会把胶囊转飞。蓝图重写这个方法时也要保留这一条。
+	UAnimInstance* AnimInstance = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+	if (!IsValid(AnimInstance) || AnimInstance->IsAnyMontagePlaying())
 	{
-		if (AnimInstance->IsAnyMontagePlaying())
-		{
-			return;
-		}
+		return;
 	}
 
 	// 正 Yaw = 向左转（UE 的 yaw 逆时针为正）。所以 TurnAngle > 0 播左转版本。
@@ -102,7 +100,121 @@ void AACTCharacterBase::HandlePivotRequested(float TurnAngle)
 		return;
 	}
 
-	PlayAnimMontage(Montage, 1.0f);
+	ActivePivotMontage = Montage;
+
+	// 不用 PlayAnimMontage：它内部走 Montage_Play 的默认参数，bStopAllMontages = true，
+	// 会停掉当前所有蒙太奇。这里明确传 false，只播这一个。
+	AnimInstance->Montage_Play(Montage, FMath::Max(PivotPlayRate, KINDA_SMALL_NUMBER),
+		EMontagePlayReturnType::MontageLength, 0.0f, /*bStopAllMontages=*/false);
+}
+
+float AACTCharacterBase::PlayMontageFromTime(UAnimMontage* Montage, float StartTime, float PlayRate)
+{
+	UAnimInstance* AnimInstance = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+	if (!IsValid(Montage) || !IsValid(AnimInstance))
+	{
+		return 0.0f;
+	}
+
+	// ReturnType 用 Duration：返回的是"从 StartTime 到结尾还剩多久"，
+	// 蓝图拿它设个定时器就能精确地在这段播完时做下一件事。
+	const float Remaining = AnimInstance->Montage_Play(
+		Montage,
+		FMath::Max(PlayRate, KINDA_SMALL_NUMBER),
+		EMontagePlayReturnType::Duration,
+		FMath::Max(StartTime, 0.0f),
+		/*bStopAllMontages=*/false);
+
+	if (Remaining > 0.0f && (Montage == PivotMontageLeft || Montage == PivotMontageRight))
+	{
+		ActivePivotMontage = Montage;
+	}
+
+	return Remaining;
+}
+
+float AACTCharacterBase::PlayPivotFromSection(float TurnAngle, FName StartSection, float PlayRate)
+{
+	UAnimInstance* AnimInstance = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+	if (!IsValid(AnimInstance))
+	{
+		return 0.0f;
+	}
+
+	// 正 Yaw = 向左转（UE 的 yaw 逆时针为正）。
+	UAnimMontage* Montage = (TurnAngle > 0.0f) ? PivotMontageLeft : PivotMontageRight;
+	if (!IsValid(Montage))
+	{
+		UE_LOG(LogACTCharacterBase, Verbose,
+			TEXT("[%s] 未设置 %s，无法从 Section 播放 pivot。"),
+			*GetNameSafe(this), TurnAngle > 0.0f ? TEXT("PivotMontageLeft") : TEXT("PivotMontageRight"));
+		return 0.0f;
+	}
+
+	const float Rate = PlayRate > 0.0f ? PlayRate : FMath::Max(PivotPlayRate, KINDA_SMALL_NUMBER);
+
+	// bStopAllMontages = false：不要顺手把翻滚/攻击停掉。
+	const float Duration = AnimInstance->Montage_Play(
+		Montage, Rate, EMontagePlayReturnType::MontageLength, 0.0f, /*bStopAllMontages=*/false);
+
+	if (Duration <= 0.0f)
+	{
+		return 0.0f;
+	}
+
+	if (StartSection != NAME_None)
+	{
+		AnimInstance->Montage_JumpToSection(StartSection, Montage);
+	}
+
+	ActivePivotMontage = Montage;
+
+	return Duration;
+}
+
+void AACTCharacterBase::StopPivotMontage(float BlendOutTime)
+{
+	UAnimInstance* AnimInstance = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+	if (!IsValid(AnimInstance))
+	{
+		return;
+	}
+
+	UAnimMontage* Montage = ActivePivotMontage;
+
+	// 蓝图可能绕过 PlayMontageFromTime 直接播的，没走到记录里 —— 反查一次。
+	if (!IsValid(Montage))
+	{
+		UAnimMontage* Candidates[2] = { PivotMontageLeft, PivotMontageRight };
+		for (UAnimMontage* Candidate : Candidates)
+		{
+			if (IsValid(Candidate) && AnimInstance->Montage_IsPlaying(Candidate))
+			{
+				Montage = Candidate;
+				break;
+			}
+		}
+	}
+
+	if (!IsValid(Montage))
+	{
+		return;
+	}
+
+	// 必须指名停哪一个：第二个参数传 nullptr 会停掉所有蒙太奇（会把翻滚/攻击一起停）。
+	AnimInstance->Montage_Stop(FMath::Max(BlendOutTime, 0.0f), Montage);
+	ActivePivotMontage = nullptr;
+}
+
+float AACTCharacterBase::GetPivotMontagePosition() const
+{
+	const UAnimInstance* AnimInstance = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+	if (!IsValid(AnimInstance) || !IsValid(ActivePivotMontage) || !AnimInstance->Montage_IsPlaying(ActivePivotMontage))
+	{
+		return 0.0f;
+	}
+
+	return AnimInstance->Montage_GetPosition(ActivePivotMontage);
 }
 
 // ==================================================================== 控制器 / 输入上下文

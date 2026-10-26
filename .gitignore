@@ -56,6 +56,6 @@ Session.vim
 # Visual Studio
 .vs
 
-#WorkBuddy
-.workbuddy
-Docs
+# WorkBuddy
+# .workbuddy
+# Docs

@@ -257,35 +257,53 @@ void UACTCharacterMovementComponent::UpdateTurnState(float DeltaTime)
 	}
 
 	// ---------------------------------------------------------------- pivot 判定
-	// 四个门必须同时满足，缺一个都会在"不断快速转身"时炸：
+	// 五个门必须同时满足，缺一个都会在"不断快速转身"时炸：
 	//   1. 角度够大       —— 小角度不需要专用 clip
-	//   2. 速度够快       —— 慢速用提速旋转就够了
+	//   2. 速度在窗口内   —— pivot clip 是按固定速度 K 的，进出速度不匹配会让 RM 硬拉速度
 	//   3. 方向已稳定     —— 排除摇杆绕圈/乱搓
 	//   4. 冷却已过       —— 保证 pivot 不会被连播
+	//   5. 在地上
 	// 第 3 条是核心：只要玩家还在转摇杆，就永远不会播 pivot，转身完全交给
 	// 连续旋转处理（无状态、天然抗抖动）。
-	if (PivotCooldownTimer <= 0.0f
+	const float CurrentSpeed2D = Velocity.Size2D();
+
+	// 这一个谓词同时供"要不要播"和"要不要压速度"两处使用 —— 它们必须互斥，
+	// 否则 dwell 那 0.1 秒里折扣已经把速度压到 330，蒙太奇一开始 RM 又把它拉回
+	// clip 的 500，进入瞬间会出现肉眼可见的加速突变。
+	const bool bPivotCandidate =
+		PivotCooldownTimer <= 0.0f
 		&& AbsOffset > PivotAngleThreshold
-		&& Velocity.Size2D() > PivotMinSpeed
-		&& TurnStableTimer >= TurnStableDwell
-		&& IsMovingOnGround())
+		&& CurrentSpeed2D > PivotMinSpeed
+		&& CurrentSpeed2D < PivotMaxSpeed
+		&& IsMovingOnGround();
+
+	if (bPivotCandidate && TurnStableTimer >= TurnStableDwell)
 	{
 		PivotCooldownTimer = PivotCooldown;
 		TurnStableTimer = 0.0f;
 
 		UE_LOG(LogACTMovement, Verbose, TEXT("[%s] Pivot request: angle=%.1f speed=%.0f"),
-			*GetNameSafe(CharacterOwner), TurnAngleNow, Velocity.Size2D());
+			*GetNameSafe(CharacterOwner), TurnAngleNow, CurrentSpeed2D);
 
 		OnPivotRequested.Broadcast(TurnAngleNow);
 	}
 
 	// ---------------------------------------------------------------- 速度折扣
 	// 180° 反打时如果保持 500cm/s，胶囊 0.17 秒转过去，脚完全跟不上 —— 就是在冰上打转。
-	// 按角度把最大速度压下去，"转身"变成"刹车 + 转身"，pivot clip 的支撑脚才有意义。
+	// 按角度把最大速度压下去，纯旋转路径的滑步量才小一些。
 	// 这个折扣是连续函数，不是状态机：绕圈时它自然维持在低位，不会抖。
+	//
+	// 两种情况下折扣必须让路（Velocity 由 root motion 接管，折扣要么无效、要么有害）：
+	//   1. 蒙太奇正在播 —— 引擎把 Velocity 整个换成 RM 速度（ConstrainAnimRootMotionVelocity）
+	//   2. **马上就要播** —— TurnStableTimer > 0 说明输入已经安静，这一帧起就只是在等 dwell 走完。
+	//      原来漏了这一条，结果是 dwell 期间把速度压到 330，蒙太奇一开 RM 又拉回 500。
+	//
+	// 反过来：绕圈时输入永远不安静 → TurnStableTimer 恒为 0 → 折扣全量生效，这正是想要的。
+	const bool bPivotOwnsMotion = HasAnimRootMotion() || (bPivotCandidate && TurnStableTimer > 0.0f);
+
 	const float BrakeAlpha = FMath::Clamp(
 		(AbsOffset - TurnBrakeStartAngle) / FMath::Max(1.0f, 180.0f - TurnBrakeStartAngle), 0.0f, 1.0f);
-	const float TargetScale = FMath::Lerp(1.0f, TurnBrakeMinScale, BrakeAlpha);
+	const float TargetScale = bPivotOwnsMotion ? 1.0f : FMath::Lerp(1.0f, TurnBrakeMinScale, BrakeAlpha);
 
 	TurnSpeedScale = FMath::FInterpTo(TurnSpeedScale, TargetScale, DeltaTime, TurnSpeedSmoothingRate);
 }
