@@ -83,6 +83,22 @@ void UACTAnimInstance::StopMontagesSafe(float BlendOutTime)
 	Montage_Stop(FMath::Max(0.0f, BlendOutTime));
 }
 
+void UACTAnimInstance::SetAnimationDrivenYawOffset(float YawOffsetDegrees)
+{
+	// ⚠️ 这个函数会在**动画工作线程**上执行（BlueprintThreadSafeUpdateAnimation / 状态函数）。
+	// 只写下面三行原子：不读 Character / ACTMovement、不写 UPROPERTY、不打日志。
+	// 任何一个都会变成数据竞争，症状是偶发数值跳变，几乎查不出来。
+	AnimYawOffsetSlot.store(YawOffsetDegrees, std::memory_order_relaxed);
+	AnimYawActiveSlot.store(true, std::memory_order_relaxed);
+	AnimYawSeq.fetch_add(1, std::memory_order_relaxed);
+}
+
+void UACTAnimInstance::StopAnimationDrivenYaw()
+{
+	// 同上，WT 侧。真正的收尾在移动组件的 ConsumeAnimationDrivenYaw() 里做（GT）。
+	AnimYawActiveSlot.store(false, std::memory_order_relaxed);
+}
+
 void UACTAnimInstance::FlushPendingMontages()
 {
 	// 先处理停止请求，顺序是"先停后播"：同一帧里"取消上一招 + 接下一招"才不会把新招也停掉。

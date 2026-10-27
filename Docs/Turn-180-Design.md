@@ -89,18 +89,69 @@ if (|YawOffset| > 150) 播 pivot
 玩家绕圈搓摇杆时，`|YawOffset|` 会反复穿过 150° → 每 0.5 秒播一次蒙太奇 →
 蒙太奇互相打断 → 角色抽在原地。这是这个需求最容易踩的坑。
 
-### 3.2 正确判据：看输入方向是否**稳定**，不看角度**大小**
+### 3.2 核心：角度必须**以速度为参照**，不能以角色朝向为参照
 
-两种行为在信号上完全不同：
+这是整个判据的基础，先讲清楚，后面的条件才有意义。
 
-| 行为 | 输入方向角速度 | 角度 |
+| 参照系 | 反向时的行为 | 现象 |
 |---|---|---|
-| 摇杆绕圈 / 左右搓 | **持续偏高**（300~1000 deg/s） | 一直大 |
-| 真的反打 | **跳一下，然后立刻归零** | 大且稳定 |
+| 角色朝向（`TargetYaw - ActorYaw`） | `SharpTurnInterpSpeed = 1080` → **0.17 秒**转完，且是**斜坡**（180→90→0） | 任何采样延迟都读到衰减后的中间值 |
+| **速度方向**（`InputYaw - VelocityYaw`） | 反向要 `TimeToStop(0.3) + TimeToMaxSpeed(0.35)` → **0.65 秒**，且是**阶跃**（前 0.3 秒一直是 180°，速度过零后才突然变 0） | 整个反向窗口内都是稳定的 180 |
 
-所以 pivot 的触发条件是「**角度大 且 输入方向已经安静了 `TurnStableDwell` 秒**」。
-绕圈时角速度永远达不到"安静"，pivot 一次都不会触发，转身完全由连续旋转完成 ——
-**无状态、天然抗抖动**。
+用朝向做参照时，`AbsOffset > 140` 只在反打后的头 0.04 秒成立；而任何"确认"逻辑都要几十毫秒，
+等条件齐了角度已经归零 —— **pivot 一次都不会触发，而且不报任何错**。
+换成速度做参照，同一个条件在整个 0.3 秒的刹车窗口里都成立，确认逻辑想多慢都行。
+
+```cpp
+// 剩余角：还剩多少没转。斜坡、会归零 —— 只能用于速度包络、动画层 YawOffset。
+ResidualAngle = NormalizeAxis(TargetYawAngle - ActorYaw);
+
+// 转身角：输入意图 vs 速度方向。阶跃、反向过程中恒定 —— 用于 pivot 判定。
+TurnAngle = NormalizeAxis(InputYaw - Velocity.ToOrientationRotator().Yaw);
+```
+
+**副产品：不再需要锁存。** 上一版为了对抗"角度被身体旋转吃掉"，在跳变那一帧把角度锁存下来、
+还配了一个 0.35 秒有效期。改用速度参照后，这个值本身在整个窗口内就不变，锁存和有效期都是多余的。
+
+### 3.2.1 为什么不用 `Dot(Velocity, Acceleration) < 0`
+
+那个判据的方向是对的，但它只是上面这个角度判据的**弱化版**，而且少了关键的一半：
+
+```
+Dot(V, A) < 0   ⟺   angle(V, A) > 90°
+```
+
+而 `A` 的方向就是输入方向（`Acceleration = ScaleInputAcceleration(ConstrainInputAcceleration(InputVector))`，
+`CharacterMovementComponent.cpp:6451`，`ScaleInputAcceleration` 只乘 `MaxAcceleration`、不改方向）。
+所以 `angle(V, A)` 就是 `angle(输入, 速度)` —— **点乘能给的只是"夹角超过 90°"这一个符号**，
+用它就丢掉了 90°~140° 这一段的区分：90° 转和 180° 反打在点乘眼里完全一样。
+
+要拿到 135°/140° 的门槛，本来就得算角度；既然算了角度，点乘就是冗余的。
+
+**另外三条实际取用上的坑**（不影响结论，但说明不值得绕这条路）：
+
+1. `Acceleration` 是 `UCharacterMovementComponent` 的 **protected** 成员。我们是子类，能读，
+   但 Property Access 读不到 —— 想在 ABP 里用这条路就直接断了。
+2. 它在 `ControlledCharacterMove` 里赋值，而那个函数是在 `PerformMovement` 之前、由
+   `TickComponent`（也就是我们的 `Super::TickComponent`）调用的。我们的 `UpdateTurnState`
+   跑在 `Super` **之前**，所以读到的是**上一帧**的值。能用，但没必要。
+3. `EndPhysicsTickComponent` 里 `bFailMove` 会把 `Acceleration` 清零（`:5483`），
+   那一帧判定会静默失效。
+
+直接用已经拿到的输入向量算角度，更早、更干净，数学上完全等价。
+
+### 3.2.2 确认窗口内暂停旋转
+
+角度有了，还要排除"摇杆还在动"的情况（绕圈）。判据是**单帧输入方向变化 > `TurnInputSettleAngle`（25°）
+就把稳定计时清零**：摇杆绕圈角速度上限约 1800 deg/s，60fps 下每帧 30°，永远过不了这一关。
+
+这几帧如果照常旋转，会白白吃掉 `1080 × 0.05 ≈ 54°` 转角：蒙太奇一开，clip 的 root motion
+又从 0 转 180°，结果是「转过头 → 出蒙太奇后被 `PhysicsRotation` 拉回来」，肉眼可见地甩一下。
+
+所以候选成立时 `bPivotRotationFrozen = true`，`PhysicsRotation` 直接返回。
+**只有输入与速度夹角 > `PivotAngleThreshold` 时才冻结** —— 绕圈时连候选都成立不了，
+所以不会把正常转向卡住。触发后再保留 0.08 秒冻结（`PivotFreezeTimer`），
+等蒙太奇的 root motion 真正接管。
 
 ### 3.3 再加一层冷却
 
@@ -132,20 +183,30 @@ else if (Velocity.SizeSquared2D() > Square(MinSpeedToOrient))
 引擎注释明确写了"动画更新应该用它"，且在 `TickComponent` 前后读都有效。
 用它替代速度方向的收益：**意图一变，转身立刻开始，不用等速度掉头**。
 
-### 4.2 pivot 的四个门
+### 4.2 pivot 的六个门
 
 ```cpp
-if (PivotCooldownTimer <= 0
-    && AbsOffset > PivotAngleThreshold      // 1. 角度够大
-    && Speed > PivotMinSpeed                // 2. 速度在窗口内（见 6.5 ②）
-    && Speed < PivotMaxSpeed
-    && TurnStableTimer >= TurnStableDwell   // 3. 输入方向已稳定
-    && IsMovingOnGround())                  // 4. 在地上
+bPivotPending =
+       bAutoUpdateYaw && RotationMode == VelocityDirection  // 0. 只在朝速度方向模式
+    && bInputDrivenThisFrame                                // 1. 有输入意图（滑行不播）
+    && AbsTurnAngle > PivotAngleThreshold                   // 2. 输入 vs **速度** 夹角够大
+    && Speed > PivotMinSpeed && Speed < PivotMaxSpeed       // 3. 速度在窗口内（见 6.5 ②）
+    && PivotCooldownTimer <= 0                              // 4. 冷却已过
+    && IsMovingOnGround();                                  // 5. 在地上
+
+if (bPivotPending && TurnStableTimer >= TurnStableDwell)    // 6. 输入方向已稳定（排除绕圈）
 {
     PivotCooldownTimer = PivotCooldown;
-    OnPivotRequested.Broadcast(TurnAngleNow);   // 事件，不是 bool
+    PivotFreezeTimer = 0.08f;                               // 等 RM 接管，别再扭胶囊
+    OnPivotRequested.Broadcast(BroadcastAngle);             // 事件，不是 bool
 }
 ```
+
+第 0 条不能省：`LookingDirection` 的目标角来自相机，绕着角色转一圈相机就会造出 180° 的假反打；
+`bAutoUpdateYaw == false` 时目标角归外部（攻击锁定）管，同样不该播 pivot。
+
+第 6 条只负责一件事：排除绕圈。它由 `TurnInputSettleAngle`（单帧输入变化 25°）驱动，
+**不参与"等角度"** —— 角度由速度参照系保证稳定，所以这个 dwell 可以压到 0.05 秒。
 
 用**事件**而不是每帧可查的 bool：pivot 是"触发一次、播一次"的离散行为，
 bool 会被状态机重复读到 `true` 而连播。
@@ -184,30 +245,33 @@ if (Abs(NormalizeAxis(ActorYaw - CurrentYawAngle)) > 1.0f)
 ## 5. 速度包络：它和 root motion 是**互斥**的两条路，不是叠加
 
 ```cpp
-BrakeAlpha = Clamp((AbsOffset - TurnBrakeStartAngle) / (180 - TurnBrakeStartAngle), 0, 1);
+// 折扣用「剩余角」：要跟着身体真实转过多少走，不是跟着"曾经想转多少"
+BrakeAlpha = Clamp((AbsResidual - TurnBrakeStartAngle) / (180 - TurnBrakeStartAngle), 0, 1);
 TargetScale = Lerp(1.0f, TurnBrakeMinScale, BrakeAlpha);        // 平滑后
 MaxWalkSpeed = SmoothedMaxSpeed * TurnSpeedScale;
 
 // 两条路必须互斥，否则互相打架
-bPivotOwnsMotion = HasAnimRootMotion() || (bPivotCandidate && TurnStableTimer > 0);
+bPivotOwnsMotion = HasAnimRootMotion() || bPivotPending;
 TargetScale = bPivotOwnsMotion ? 1.0f : TargetScale;
 ```
+
+`bPivotPending` 从**请求锁存那一刻**就为真（不等确认窗口走完），所以折扣从头就没机会压速度。
 
 ### 5.1 会不会互相影响：会，而且原来就有一处真的在打架
 
 RM 期间 `Velocity` 被整个替换，折扣**无效但不至于有害**。真正的问题是**切换的那一帧**：
 
-- `TurnStableDwell = 0.1s`，这 0.1 秒里 `|TurnAngle| = 180°` → 折扣已经开始压速度
+- 原来 `TurnStableTimer > 0` 才让路，也就是 dwell 那 0.1 秒里折扣已经压了速度
 - `MaxWalkSpeed` 从 500 掉到约 265，实际速度被刹到 **330 左右**
 - 蒙太奇开始，clip 的 lead-in 段 RM 速度是 **500**，`ConstrainAnimRootMotionVelocity` 把 `Velocity` 一帧拉回 500
 
 → **进入蒙太奇瞬间速度跳 330 → 500，约 50% 的突变**，肉眼可见。
 
-修法就是上面的 `bPivotOwnsMotion`：把「要不要播 pivot」的谓词（`bPivotCandidate`）复用给折扣判断，
-只要输入已经安静（`TurnStableTimer > 0`，说明这一帧起就只是在等 dwell 走完），折扣立刻让路。
+修法就是上面的 `bPivotOwnsMotion`：把「要不要播 pivot」的谓词复用给折扣判断，
+而且**从候选成立那一刻就让路**（不等稳定确认走完），折扣从头就没机会压速度。
 
-反过来这个写法还有个好处：**绕圈时输入永远不安静 → `TurnStableTimer` 恒为 0 → 折扣全量生效**，
-正是想要的行为。一个谓词同时解决了两个方向的判定。
+反过来这个写法还有个好处：**绕圈时稳定计时永远起不来 → `bPivotPending` 恒 false
+→ 折扣全量生效**，正是想要的行为。一个谓词同时解决了两个方向的判定。
 
 ### 5.2 更该知道的：包络对"单次 180°"其实来不及
 
@@ -587,22 +651,25 @@ PlayPivotFromSection(TurnAngle, "Turn")     → 播，并记录 ActivePivotMonta
 —— 效果和从 section 中间开始播完全一样，所以切分并不会带来额外能力）、
 改原始 clip 要同步三份、section 边界在 sequence 里没有标记容易漂移。
 
-### 6.8 为什么"改状态机实现"是更差的选择，不是更好的退路
-
-用户的备选方案是"如果蓝图侧做不到就改状态机"。实际上蓝图侧做得到（见 6.7），
-但更重要的是：**状态机这条路本身有硬限制**。
+### 6.8 蒙太奇 vs 状态机：各自的硬限制
 
 `UAnimInstance::RootMotionMode` 默认 `RootMotionFromMontagesOnly`（`AnimInstance.cpp:202`），
-所以**状态机里播的 clip，它的 root motion 不会驱动胶囊**。要想让状态机吃到 RM，只能改成
-`RootMotionFromEverything` —— 那会让**所有**状态（包括循环的 `Cycle` Blend Space）的 RM 都开始驱动胶囊。
-如果 locomotion 那几个循环 clip 带 RM，角色会自己往前跑，这是灾难性的。
+所以**状态机里播的 clip，它的 root motion 不会驱动胶囊**。改成 `RootMotionFromEverything`
+又会连 `Cycle` 的 Blend Space 一起驱动 —— 角色自己往前跑，不可接受。
 
-不用 RM 的话，pivot clip 的 180° 旋转和两段位移只能靠程序补：
-- 旋转由 `PhysicsRotation` 补（已经是 0.17s）
-- 位移只能完全放弃 → 角色原地转身，clip 里"跑过去 — 跑回来"全变成原地动作
+这条限制拆开看是两件事，它们的严重程度完全不同：
 
-所以状态机方案的实际结果是"退化成纯旋转路径 + 一个原地转身动画"，比现在差。
-**结论：保持蒙太奇，用 6.7 的接口在蓝图里控制起止点。**
+| RM 提供的东西 | 状态机能不能补 | 结论 |
+|---|---|---|
+| **旋转** | **能** —— 把 clip 的 root yaw 烘焙成曲线，每帧喂给 CMC 直接落位 | 状态机可行 |
+| **位移** | **不能** —— 想补就得把位移也曲线化并自己驱动速度，等于手写一遍 RM | 取决于 clip 形态 |
+
+所以"状态机一定更差"这个结论**只在需要保留 clip 位移时才成立**。
+如果 pivot 用"原地撑地转身"那一段、位移继续交给正常 locomotion，状态机方案是干净可用的，
+而且比蒙太奇更好：不占 `DefaultSlot`、不会 `bStopAllMontages` 误停翻滚、可被任意打断。
+
+具体接线见 §9。蒙太奇方案（§6.7）适合"必须完整播放带位移的 clip"。两者不冲突，
+`bAnimYawDriven` 为真时蒙太奇路径的所有判定都会让路。
 
 ---
 
@@ -615,8 +682,9 @@ PlayPivotFromSection(TurnAngle, "Turn")     → 播，并记录 ActivePivotMonta
 | `PivotAngleThreshold` | 140° | pivot 的角度门 | 太小 → 90° 也播 pivot，动作过重 |
 | `PivotMinSpeed` | 350 cm/s | pivot 的速度下限 | 太低 → 低速也会进 clip，RM 把速度拉上去 |
 | `PivotMaxSpeed` | 650 cm/s | pivot 的速度上限 | **必须和 clip 的设计速度匹配**，否则进入瞬间速度突变 |
-| `TurnStableRate` | 120 deg/s | "方向已稳定"的角速度上限 | 太大 → 绕圈也会触发（核心参数，别乱调） |
-| `TurnStableDwell` | 0.1s | 稳定判定时长 | 太小 → 搓摇杆就触发 |
+| `TurnInputSettleAngle` | 25° | 单帧输入变化超过它就把稳定计时清零 | 太大 → 快速绕圈会漏过去触发 pivot；太小 → 手柄噪声让稳定计时永远起不来 |
+| `TurnStableDwell` | 0.05s | 输入方向需要稳定多久才确认 | 太大 → 转身前多冻结几帧，像卡了一下；太小 → 确认不住 |
+| `PivotFreezeTimer` | 0.08s（`UpdateTurnState` 内常量） | 触发后继续冻结旋转，等 RM 接管 | 太小 → clip 还没开始，胶囊先转了十几度 |
 | `PivotCooldown` | 0.9s | pivot 最小间隔 | **必须 ≥ 蒙太奇时长**，否则连播 |
 | `TurnBrakeStartAngle` | 60° | 开始减速的角度 | 太小 → 正常跑动一直掉速 |
 | `TurnBrakeMinScale` | 0.15 | 180° 时保留的速度比例 | 太高 → 滑步；太低 → 转身太沉 |
@@ -661,3 +729,184 @@ PlayPivotFromSection(TurnAngle, "Turn")     → 播，并记录 ActivePivotMonta
 在窄道里必须先做通路检查，否则穿墙会很明显。
 
 同理确认 `AM_PC_01_Roll` 是否带 RM（4.4 的回弹问题只在有 RM 时才会暴露）。
+
+---
+
+## 9. 备选实现：状态机 + 曲线驱动旋转
+
+### 9.1 为什么不能用 `RotationRate`
+
+UE 里"设置旋转速度"的自然做法是改 `ACharacter::RotationRate` 或 CMC 的 `RotationRate`。
+**在这个项目里它是个死参数**：
+
+```cpp
+// ACTCharacterMovementComponent.cpp:34-36（构造函数）
+bOrientRotationToMovement = false;
+bUseControllerDesiredRotation = false;
+RotationRate = FRotator::ZeroRotator;
+```
+
+```cpp
+// CharacterMovementComponent.cpp:6630-6635（基类）
+void UCharacterMovementComponent::PhysicsRotation(float DeltaTime)
+{
+    if (!(bOrientRotationToMovement || bUseControllerDesiredRotation))
+    {
+        return;   // ← 两个都是 false，直接返回，压根不会读 RotationRate
+    }
+    ...
+    FRotator DeltaRot = GetDeltaRotation(DeltaTime);   // RotationRate 只在这里被用到
+```
+
+而我们重写的 `PhysicsRotation` 只用 `TargetYawAngle` + `GetRotationInterpSpeed()`，
+完全不读 `RotationRate`。所以蓝图里改 `RotationRate` **不会有任何效果**，改完找不到原因会很浪费。
+
+同理不能在 ABP 里直接 `SetActorRotation`：那会绕过 `CurrentYawAngle` 缓存，
+下一帧 `PhysicsRotation` 从旧角度做 `FixedTurn`，表现就是"转过去又弹回来"。
+
+### 9.2 正确做法：曲线 → `UACTAnimInstance::SetAnimationDrivenYawOffset`
+
+```cpp
+// 每个 tick 在 pivot 状态里调一次（目标就是 self，WT 上完全合法）
+SetAnimationDrivenYawOffset( CurveValue("root_rotation_Z") );
+// 退出状态时
+StopAnimationDrivenYaw();
+```
+
+**这两个函数在 `UACTAnimInstance` 上，不在移动组件上。** 这不是风格选择，是被线程模型逼出来的：
+`BlueprintThreadSafeUpdateAnimation` 里能拿到的只有 self，要从 self 走到移动组件必须经过
+`GetCharacterMovement`，而它**没有** `BlueprintThreadSafe` 标记 —— 整条链在 WT 上编译不过，
+报错就是"没有线程安全的 self 可以赋值"。
+
+放到 AnimInstance 之后还有第二个收益：**全程没有跨对象的 UFUNCTION 调用**。
+在 WT 上 `ProcessEvent` 一个外部 UObject 才是这个方案真正的风险点，现在完全不存在了。
+
+移动组件内部：
+
+```cpp
+// TickComponent 最前面，GT 上拉取
+ConsumeAnimationDrivenYaw(DeltaTime);
+//   → Cast<UACTAnimInstance>(GetMesh()->GetAnimInstance())，读它的原子槽
+AnimationDrivenYaw = NormalizeAxis(AnimDrivenEntryYaw + Offset);   // AnimDrivenEntryYaw 首次收到时记录
+...
+// PhysicsRotation
+if (bAnimYawDriven)
+{
+    CurrentYawAngle = AnimationDrivenYaw;
+    MoveUpdatedComponent(FVector::ZeroVector, Quat(0, CurrentYawAngle, 0), false);
+    return;          // 不插值：曲线本身已经含了"慢-快-慢"
+}
+```
+
+三处关键设计：
+
+1. **传偏移量，不传绝对角。** 曲线首帧是 0，按绝对角解释会让胶囊瞬间跳到 yaw=0。
+   基准角由 GT 在第一次收到值时记，蓝图把曲线值原样传进来就行。
+2. **不做插值。** 用 `FixedTurn` 追一个每帧变化的绝对角，等于给曲线又套了一层低通，
+   转身中段会被抹平，看起来像匀速硬转。
+3. **不改 `TargetYawAngle`。** 它必须继续跟着输入走，否则退出时会朝一个过期的目标角拽。
+
+### 9.2.1 线程模型：WT 只写原子槽，GT 才动状态
+
+这两个函数是从**动画工作线程**调用的（`BlueprintThreadSafeUpdateAnimation`，或状态机里
+线程安全的状态函数）。在 WT 上调 UObject 函数本身是引擎支持的写法 ——
+AnimGraph 的 Call Function 节点要求「**非纯 + 带 `BlueprintThreadSafe` 元数据 + 不能有返回参数**」
+（`AnimGraphNode_CallFunction.cpp:249-259`），两个 setter 正好满足（`void` 返回、单入参、非纯）。
+
+但**函数体里不能碰任何 GT 状态**。所以：
+
+```cpp
+// WT：只写自己的原子槽。不读 Character / ACTMovement、不写 UPROPERTY、不打日志。
+// 目标对象是 self（AnimInstance 自己），所以连跨对象调用都没有。
+void SetAnimationDrivenYawOffset(float Offset)
+{
+    AnimYawOffsetSlot.store(Offset, relaxed);
+    AnimYawActiveSlot.store(true, relaxed);
+    AnimYawSeq.fetch_add(1, relaxed);
+}
+```
+
+```cpp
+// GT：移动组件 TickComponent 最前面，把槽位拉进真正的状态
+ConsumeAnimationDrivenYaw(DeltaTime);
+//   ├─ 未激活 → EndAnimationDrivenYaw()
+//   ├─ 序列号没变超过 AnimYawTimeout(0.25s) → 看门狗收尾
+//   └─ 首次收到 → 在这里读 ActorRotation 记 AnimDrivenEntryYaw
+```
+
+为什么基准角必须放在 GT 取：`GetActorRotation()` 读的是 GT 拥有的 transform，
+胶囊在同一个 tick group 里随时可能被移动，在 WT 上读就是数据竞争。
+
+**代价：晚一帧生效。** 动画 WT 在网格的 Tick 里跑，而 CMC 的 Tick 更早，
+所以第 N 帧动画算出的曲线值在第 N+1 帧才作用到胶囊。60fps 下 16ms，
+pivot 中段的曲线角速度约 360~720 deg/s，对应 6~12° 的滞后 —— 可见但可接受。
+真要消除得把旋转施加挪到动画之后，那是另一套架构（等于让动画驱动物理）。
+
+**看门狗**：`AnimYawTimeout`（0.25s）。状态函数每帧都会写一次序列号，
+如果连续 0.25 秒没更新，说明状态被中断了或者 ABP 忘了调 `StopAnimationDrivenYaw`，
+GT 自动收尾并打一条 Warning。这一条很重要 —— 漏了 `Stop` 的话角色会永久不再朝输入方向转，
+而且没有任何报错。
+
+### 9.3 曲线怎么来：用内置 modifier，不用写代码
+
+`AnimationModifierLibrary` 插件里有 `UMotionExtractorModifier`（项目 `Build.cs` 已依赖该模块）：
+
+| 设置 | 值 |
+|---|---|
+| `BoneName` | `root` |
+| `MotionType` | **`Rotation`**（不是 `RotationSpeed`） |
+| `Axis` | `Z` |
+| `Space` | `LocalSpace` |
+| `bRelativeToFirstFrame` | `true` |
+
+生成的曲线名：`<BoneName>_rotation_Z`，例如 `root_rotation_Z`，值是**有符号的累计偏航角（度）**。
+
+**为什么不用 `RotationSpeed`**：源码里它算完角度后强制取正
+（`MotionExtractorUtilities.cpp:170-186`，`if (RotationAngle < 0) { RotationAxis = -RotationAxis; RotationAngle = -RotationAngle; }`），
+**左右方向丢了**，还得另外定符号。而 `Rotation` 类型直接返回 `Rotation.Yaw`，有符号、无积分漂移。
+
+`bRelativeToFirstFrame` 是关键：否则曲线起点是 clip 首帧的绝对根骨朝角，不是 0。
+
+### 9.4 ABP 接线
+
+```
+State Machine
+ ├─ Cycle   → 1D Blend Space (Speed)                        ← 正常移动
+ ├─ Pivot   → Sequence Player（不循环）
+ │             · On State Entry → SetAnimationDrivenYawOffset(0)
+ │             · On Update     → SetAnimationDrivenYawOffset(GetCurveValue("root_rotation_Z"))
+ │             · On State Exit → StopAnimationDrivenYaw()
+ └─ ...
+```
+
+进入条件：`CharMoveComp.LocomotionState.bPivotRequested`（或用 CMC 的 `OnPivotRequested` 事件置一个动画侧 bool）。
+退出条件：`Sequence Player` 的 `Time Remaining < 0.05`，或 clip 末尾放一个 AnimNotify + 一个 bool。
+
+这两个节点可以在 `BlueprintThreadSafeUpdateAnimation` 里直接连（函数带 `BlueprintThreadSafe` 元数据，
+目标就是 self），也可以放在状态机的 `On State Entry` / `On Update` / `On State Exit` 里。
+
+⚠️ **退出的那一帧一定要调 `StopAnimationDrivenYaw()`**。漏了的话 `PhysicsRotation` 会停在曲线分支，
+角色不再朝输入方向转。代码侧有 0.25 秒的看门狗兜底（会打一条 Warning），但别依赖它 ——
+看门狗生效的那 0.25 秒里胶囊是"冻在曲线最后的值"上的。
+
+### 9.5 这个方案自带的一个新问题：Warping 要关掉
+
+`Orientation Warping`（Graph 模式，`LocomotionDirection ← VelocityDirection`）会试图把腿扭回速度方向。
+pivot 状态里胶囊是被曲线转的，速度还在旧方向 → Warping 会把刚转过去的部分又扭回来，
+表现为"转了一半，腿是斜的"。
+
+在 `Pivot` 状态里把两个 Warping 的 `bEnabled` 关掉（或者给它们接一个权重，状态里为 0）。
+`Foot Placement` 可以保留 —— 支撑脚贴地正是这个状态最需要的。
+
+### 9.6 状态机方案下位移的三种处理
+
+| 处理 | 效果 | 代价 |
+|---|---|---|
+| **A. 只播原地转身段**（推荐） | 旋转由曲线、位移由 velocity + `TurnSpeedScale` 折扣 | 零额外工作；脚在转身中段仍可能小幅滑动 |
+| B. 烘焙 `Distance` 曲线并自己驱动速度 | 位移与 clip 完全一致 | 等于手写一遍 RM；且 `MaxWalkSpeed` 还要被曲线速度临时接管 |
+| C. 换 `RootMotionFromEverything` | 直接吃 RM | **不可行**：`Cycle` 的 Blend Space 也会开始驱动胶囊，角色自己跑 |
+
+选 A 时减速**不要关**：状态机只接管旋转，位移还在，不减速就等于"以 500 的速度原地转 180°"，
+脚会大面积打滑。`bPivotOwnsMotion` 里刻意**没有**包含 `bAnimYawDriven` 就是这个原因。
+而且折扣用的是 `ResidualAngle`，曲线让胶囊转起来之后残差自然收窄，折扣会跟着动画节奏放开，
+不需要额外写逻辑。
