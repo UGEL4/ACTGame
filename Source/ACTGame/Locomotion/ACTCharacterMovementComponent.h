@@ -1,15 +1,25 @@
-// ACT 移动组件 —— 胶囊体位移的唯一权威
+// ACT 移动组件 —— 胶囊体位移与朝向的唯一权威
 //
-// 设计原则（对照 ALS-Refactored，但已剥离网络同步相关内容）：
-//   1. **旋转单一权威**：关掉 bOrientRotationToMovement / bUseControllerDesiredRotation / Character 的
-//      bUseControllerRotation*，所有朝向只能经 SetTargetYawAngle() 或 SetRotationMode() 改变。
-//      实现落在 PhysicsRotation()（引擎在 PerformMovement 末尾调用，蒙太奇 root motion 期间自动跳过）。
-//   2. **参数换算而非硬编码**：加速度 = MaxSpeed / TimeToMaxSpeed，减速度 = MaxSpeed / TimeToStop。
-//      因此 BrakingFrictionFactor 必须置 0，否则 ApplyVelocityBraking 里的指数摩擦项会盖掉恒定减速度，
-//      TimeToStop 形同虚设（这是最容易踩的坑，见 .cpp 构造函数注释）。
-//   3. **动画层零推导**：所有需要给动画层的值都在 UpdateLocomotionState() 里算完，
-//      动画蓝图只读 FActLocomotionState，不 Cast、不读曲线。
-//   4. 不做网络预测：没有 FSavedMove、没有 Desired*/实际值双状态。
+// ================================================================ 它做什么
+//   1. 位移：输入 → 加速度/减速度 → 速度 → 移动。所有速度参数都是"时间"换算出来的。
+//   2. 朝向：只有一个目标角和一个当前角，按固定角速度平滑过去（或瞬时对齐）。
+//   3. 快照：把动画层需要、而动画层算不出来的量组装成 FActLocomotionState。
+//
+// ================================================================ 它不做什么（重要）
+//   1. **不判定转身**：没有 pivot 请求、没有大角度提速、没有速度折扣、没有冷却。
+//      "什么时候播转身/折返动画、转多少度"是动画层的决定，见
+//      Docs/Turn-Pivot-CurveDriven-Design.md（§4 曲线契约 / §8.5 瞬转折返）。
+//      组件只提供两个原语：SetTargetYawAngle()（含 bInstant）和 SetRotationInterpSpeed()。
+//   2. **不碰动画资产**：不认识 Montage，不认识曲线。动画层通过 Property Access 只读快照。
+//   3. **不做网络预测**：没有 FSavedMove、没有 Desired*/实际值双状态。
+//
+// ================================================================ 两条容易踩的坑（已处理，别改回去）
+//   1. 旋转权威唯一：bOrientRotationToMovement / bUseControllerDesiredRotation / Character 的
+//      bUseControllerRotation* 全部关闭，否则 PhysicsRotation 会和引擎抢朝向。
+//   2. BrakingFrictionFactor 必须为 0：否则 ApplyVelocityBraking 里的指数摩擦项会盖掉
+//      恒定减速度，TimeToStop 形同虚设（见 .cpp 构造函数注释）。
+//
+// 结构对照 ALS-Refactored 的 CMC，但剥离了网络同步、转身动作、蒙太奇与曲线驱动。
 
 #pragma once
 
@@ -19,14 +29,6 @@
 #include "ACTCharacterMovementComponent.generated.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogACTMovement, Log, All);
-
-/**
- * 请求播放一次 pivot（急转身）动画。参数是剩余转向角（度，正 = 向左）。
- *
- * 用事件而不是每帧查询的 bool：pivot 是一次性离散行为，必须"触发一次、播一次"。
- * 用 bool 让外部轮询，很容易在状态机里重复读到 true 而连播。
- */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FACTPivotRequested, float, TurnAngle);
 
 UCLASS()
 class ACTGAME_API UACTCharacterMovementComponent : public UCharacterMovementComponent
@@ -39,13 +41,13 @@ public:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	/** 旋转的唯一执行点。引擎在 PerformMovement 末尾调用，蒙太奇 root motion 期间自动跳过。 */
+	/** 朝向的唯一写入口。引擎在 PerformMovement 末尾调用，蒙太奇 root motion 期间自动跳过。 */
 	virtual void PhysicsRotation(float DeltaTime) override;
 
 	/** 落地钩子：置 Landing 计时，动画层据此播落地缓冲。 */
 	virtual void ProcessLanded(const FHitResult& Hit, float RemainingTime, int32 Iterations) override;
 
-	// ================================================================ 对外接口
+	// ================================================================ 步态 / 站姿 / 朝向模式
 
 	/** 切换步态。只改目标最大速度，实际速度由加速度平滑过渡（不会瞬移）。 */
 	UFUNCTION(BlueprintCallable, Category = "ACT|Locomotion")
@@ -67,27 +69,25 @@ public:
 	UFUNCTION(BlueprintPure, Category = "ACT|Locomotion")
 	EACTRotationMode GetRotationMode() const { return RotationMode; }
 
+	// ================================================================ 朝向
+
 	/**
 	 * 设置目标偏航角（度）。这是改变朝向的唯一入口。
-	 * @param bInstant true = 下一帧直接对齐（翻滚、瞬移、攻击起手等），否则按 RotationInterpSpeed 插值。
+	 * @param bInstant true = 下一帧直接对齐（折返、翻滚、瞬移、攻击起手），否则按 RotationInterpSpeed 插值。
 	 */
 	UFUNCTION(BlueprintCallable, Category = "ACT|Locomotion")
 	void SetTargetYawAngle(float NewTargetYaw, bool bInstant = false);
 
 	/**
 	 * 是否允许每帧自动刷新目标偏航角（默认 true）。
-	 * 关掉后 SetTargetYawAngle 设的值会保持住 —— 攻击时"锁定朝向敌人"必须关，
-	 * 否则 UpdateDesiredYaw 每帧会把手动设的角度覆盖回速度/相机方向。
+	 * 关掉后 SetTargetYawAngle 设的值会保持住 —— 攻击锁定朝向、折返窗口内都必须关，
+	 * 否则 UpdateDesiredYaw 每帧会把手动设的角度覆盖回输入/速度方向。
 	 */
 	UFUNCTION(BlueprintCallable, Category = "ACT|Locomotion")
 	void SetAutoYawUpdate(bool bEnable);
 
 	UFUNCTION(BlueprintPure, Category = "ACT|Locomotion")
 	float GetTargetYawAngle() const { return TargetYawAngle; }
-
-	/** 当前实际偏航角（度）。与 TargetYawAngle 的差就是动画层 Orientation Warping 的输入。 */
-	UFUNCTION(BlueprintPure, Category = "ACT|Locomotion")
-	float GetCurrentYawAngle() const { return CurrentYawAngle; }
 
 	/** 临时改变转向速度（deg/s），传 0 冻结旋转。用于攻击期间锁朝向、处决动画等。 */
 	UFUNCTION(BlueprintCallable, Category = "ACT|Locomotion")
@@ -96,76 +96,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "ACT|Locomotion")
 	float GetRotationInterpSpeed() const;
 
+	// ================================================================ 动画层数据
+
 	/** 动画层唯一数据源。
 	 *  注意：不加 UFUNCTION —— UFUNCTION 不能返回引用，这里必须是零拷贝的 C++ 访问。 */
 	const FActLocomotionState& GetLocomotionState() const { return LocomotionState; }
 
 	const FActGaitSettings& GetGaitSettings(EACTGait InGait) const { return GaitSettings.Get(InGait); }
 
-	/** 当前是否处于落地缓冲（动画层可直接用 LocomotionState.bLanding）。 */
-	UFUNCTION(BlueprintPure, Category = "ACT|Locomotion")
-	bool IsLanding() const { return LandingTimer > 0.0f; }
-
-	// ================================================================ 转向
-
-	/** 请求一次 pivot 动画。目前只有移动组件自己发（见 UpdateTurnState），保留 BP 可绑定。 */
-	UPROPERTY(BlueprintAssignable, Category = "ACT|Locomotion")
-	FACTPivotRequested OnPivotRequested;
-
-	/** 还需要转多少度（有符号，正 = 向左）。= 目标朝向 − 当前朝向。 */
-	UFUNCTION(BlueprintPure, Category = "ACT|Locomotion")
-	float GetTurnAngle() const;
-
-	/** 是否处于"大角度转向"（|TurnAngle| > SharpTurnAngleThreshold）。 */
-	UFUNCTION(BlueprintPure, Category = "ACT|Locomotion")
-	bool IsSharpTurning() const;
-
-	/** 当前转向导致的速度折扣（0~1）。1 = 不受影响。调试用。 */
-	UFUNCTION(BlueprintPure, Category = "ACT|Locomotion")
-	float GetTurnSpeedScale() const { return TurnSpeedScale; }
-
-	// ---------------------------------------------------------------- 动画驱动的朝向
-	// 给"状态机 pivot"用：pivot 状态每帧把动画曲线里的 root 偏航角喂进来，CMC 直接落位。
-	//
-	// 为什么不是"设置 RotationRate"：这个项目的 bOrientRotationToMovement /
-	// bUseControllerDesiredRotation 都是 false、RotationRate 也是零向量，
-	// 基类 PhysicsRotation 第一行就 return（CharacterMovementComponent.cpp:6632），
-	// 我们自己重写的版本也不读 RotationRate —— 改它对胶囊一点作用都没有。
-	//
-	// 为什么不是 ABP 里直接 SetActorRotation：会绕过 CurrentYawAngle 缓存，下一帧
-	// PhysicsRotation 从旧角度做 FixedTurn，表现为"转过去又弹回来"。
-	//
-	// ---------------------------- 线程模型（重要） ----------------------------
-	// 数据入口在 **UACTAnimInstance**（`SetAnimationDrivenYawOffset` / `StopAnimationDrivenYaw`），
-	// 不在这个组件上。原因：`BlueprintThreadSafeUpdateAnimation` 里能拿到的只有 self，
-	// 要从 self 走到移动组件得经过 `GetCharacterMovement`，而它没有 BlueprintThreadSafe 标记，
-	// 整条链在 WT 上编译不过。
-	//
-	// 所以分工是：
-	//   WT  → 写 AnimInstance 自己的原子槽（不碰任何外部对象，没有跨对象 ProcessEvent）
-	//   GT  → ConsumeAnimationDrivenYaw() 把槽位拉过来，在这里读 ActorRotation 记基准角
-	//
-	// 代价是晚一帧生效：动画 WT 跑在网格 Tick 内，晚于 CMC 的 Tick。
-
-	/** 当前是否处于动画驱动朝向状态（GT 值，滞后一帧）。 */
-	UFUNCTION(BlueprintPure, Category = "ACT|Turn")
-	bool IsAnimationDrivenYaw() const { return bAnimYawDriven; }
-
 protected:
 	// ================================================================ 内部更新
 
-	/** 从 AnimInstance 的原子槽拉取驱动值并更新 GT 状态。必须在 TickComponent 最前面调用。 */
-	void ConsumeAnimationDrivenYaw(float DeltaTime);
-
-	/** GT 侧真正结束动画驱动，交还朝向控制权。 */
-	void EndAnimationDrivenYaw();
-
 	/** 根据 RotationMode 推导本帧的目标偏航角。必须在 Super::TickComponent 之前调用。 */
-	void UpdateDesiredYaw(float DeltaTime);
-
-	/** 转向分级：稳定性计时、pivot 判定、速度折扣。必须在 UpdateDesiredYaw 之后、
-	 *  UpdateGaitParameters 之前调用（后者要用 TurnSpeedScale）。 */
-	void UpdateTurnState(float DeltaTime);
+	void UpdateDesiredYaw();
 
 	/** 把 GaitSettings 里的时间换算成 MaxAcceleration / BrakingDecelerationWalking。 */
 	void UpdateGaitParameters(float DeltaTime);
@@ -176,7 +119,7 @@ protected:
 	/** 空中时探测脚底到地面的距离（限频射线）。 */
 	void UpdateGroundDistance(float DeltaTime);
 
-	// ================================================================ 配置
+	// ================================================================ 配置：步态
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Gait")
 	FActGaitSettingsSet GaitSettings;
@@ -188,6 +131,8 @@ protected:
 	/** 蹲行速度相对当前步态的比例。 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Gait", Meta = (ClampMin = 0.0f, ClampMax = 1.0f))
 	float CrouchSpeedScale = 0.3f;
+
+	// ================================================================ 配置：朝向
 
 	/** 朝速度方向时的转向速度（deg/s）。540 ≈ 0.33 秒转 180°。 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Rotation", Meta = (ClampMin = 0.0f, ForceUnits = "deg/s"))
@@ -201,79 +146,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Rotation", Meta = (ClampMin = 0.0f, ForceUnits = "cm/s"))
 	float MinSpeedToOrient = 5.0f;
 
-	// ---------------------------------------------------------------- 大角度转向 / 180 反打
-
-	/** 超过这个角度开始提速转向（度）。小角度用基础速度，避免直线奔跑时左右微调过冲。 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ClampMax = 180.0f, ForceUnits = "deg"))
-	float SharpTurnAngleThreshold = 45.0f;
-
-	/** 大角度时的旋转速度（deg/s）。180° 用 1080 约 0.17 秒转完；540 要 0.33 秒，明显"舍不得转身"。 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ForceUnits = "deg/s"))
-	float SharpTurnInterpSpeed = 1080.0f;
-
-	/**
-	 * 判定 pivot 的角度门（度）。注意它作用在 **输入方向 vs 速度方向** 上，不是 vs 角色朝向。
-	 *
-	 * 参照系选速度的理由：速度反向要 `TimeToStop + TimeToMaxSpeed ≈ 0.65` 秒，而且中途是
-	 * **阶跃**（从 0 到 0.3 秒一直是 180°，速度过零后才瞬间变成 0°）；角色朝向只要 0.17 秒
-	 * 就转完了，而且是**斜坡**（180 → 90 → 0，一路衰减）。用朝向做参照，任何采样延迟都会
-	 * 读到衰减后的中间值；用速度做参照，整个反向窗口内读到的都是稳定的 180。
-	 *
-	 * 它同时等价于 `Dot(Velocity, Acceleration) < 0` 的加强版：点乘只给出"夹角 > 90°"这个
-	 * 符号，140° 的门槛比它严格得多，所以不需要再单独判点乘。
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ClampMax = 180.0f, ForceUnits = "deg"))
-	float PivotAngleThreshold = 140.0f;
-
-	/** 速度低于此值（cm/s）不播 pivot —— 慢速转身用上面的提速旋转就够了，不需要专用 clip。 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ForceUnits = "cm/s"))
-	float PivotMinSpeed = 350.0f;
-
-	/**
-	 * 速度高于此值（cm/s）也不播 pivot。
-	 *
-	 * **这是必须的上限，不是可选项。** pivot clip 的 root motion 自带"跑一段 → 转身 → 再跑一段"的
-	 * 完整位移，它是按**某一个确定速度** K 的。而蒙太奇期间 CMC 的 Velocity 会被
-	 * `ConstrainAnimRootMotionVelocity()` 直接替换成 root motion 速度
-	 * （`CharacterMovementComponent.cpp:2952-2969`），所以进入速度只要和 clip 不匹配，
-	 * 就会在蒙太奇第一帧看到速度突变。
-	 *
-	 * 默认 350~650 是为 jog（500）准备的窗口。Sprint(800) 没有对应的 sprint pivot 资产，
-	 * 会被这个上限挡掉，退回"减速 + 提速旋转"。
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ForceUnits = "cm/s"))
-	float PivotMaxSpeed = 650.0f;
-
-	/**
-	 * 单帧输入方向变化超过这个角度（度）就认为"摇杆还在动"，把稳定计时清零。
-	 *
-	 * 这是排除「绕圈/搓摇杆」的唯一需要的信号：绕圈时输入方向每帧都在变，
-	 * 稳定计时永远起不来 → 一次 pivot 都不会触发。
-	 * 摇杆绕圈角速度上限约 1800 deg/s，60fps 下每帧 30°；取 25° 能把它全部挡住，
-	 * 而真正反打之后摇杆是静止的，每帧变化接近 0。
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ClampMax = 180.0f, ForceUnits = "deg"))
-	float TurnInputSettleAngle = 25.0f;
-
-	/**
-	 * 输入方向需要保持稳定多久才允许触发 pivot（秒）。
-	 * 只用来排除绕圈，不承担"等角度"的职责 —— 角度由速度参照系保证稳定，
-	 * 所以这个值可以很小。但别设 0：至少要留一帧来确认摇杆已经停下。
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ForceUnits = "s"))
-	float TurnStableDwell = 0.05f;
-
-	/** 两次 pivot 的最小间隔（秒）。必须 >= pivot 蒙太奇时长，否则连续快速转身会变成蒙太奇连播。 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ForceUnits = "s"))
-	float PivotCooldown = 0.9f;
-
-	/** 开始压低速度的转向角度（度）。 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ClampMax = 180.0f, ForceUnits = "deg"))
-	float TurnBrakeStartAngle = 60.0f;
-
-	/** 180° 反向时速度保留的比例。这个值决定转身时"掉多少速"，是最影响观感的一个参数。 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.0f, ClampMax = 1.0f))
-	float TurnBrakeMinScale = 0.15f;
+	// ================================================================ 配置：地面
 
 	/** 落地缓冲时长（秒），决定 Land 动画能播多久。 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Ground", Meta = (ClampMin = 0.0f, ForceUnits = "s"))
@@ -316,7 +189,7 @@ protected:
 	UPROPERTY(Transient)
 	bool bInstantYaw = false;
 
-	/** false 时 UpdateDesiredYaw 不再工作，目标角由外部完全控制（攻击锁定用）。 */
+	/** false 时 UpdateDesiredYaw 不再工作，目标角由外部完全控制（攻击锁定 / 折返窗口）。 */
 	UPROPERTY(Transient)
 	bool bAutoUpdateYaw = true;
 
@@ -342,75 +215,4 @@ protected:
 
 	UPROPERTY(Transient)
 	float SmoothedBrakeAmount = 0.0f;
-
-	// ---------------------------------------------------------------- 转向状态
-
-	/** 输入方向的角速度（deg/s，取绝对值并平滑）。用于区分"绕圈"和"反打"。 */
-	UPROPERTY(Transient)
-	float SmoothedTurnRate = 0.0f;
-
-	UPROPERTY(Transient)
-	float PrevInputYaw = 0.0f;
-
-	UPROPERTY(Transient)
-	bool bHasPrevInputYaw = false;
-
-	/**
-	 * 本帧输入方向的偏航角（度）。只在 bInputDrivenThisFrame 为真时有效。
-	 * 判定 pivot 用的是它和**速度方向**的夹角，而不是它和角色朝向的夹角 —— 原因见 PivotAngleThreshold。
-	 */
-	UPROPERTY(Transient, BlueprintReadOnly, Category = "ACT|Turn")
-	float InputYaw = 0.0f;
-
-	/** 本帧是否有移动输入（输入意图）。pivot 只在有输入时判定，松手滑行不播转身动画。 */
-	UPROPERTY(Transient, BlueprintReadOnly, Category = "ACT|Turn")
-	bool bInputDrivenThisFrame = false;
-
-	/** 输入方向在本次判定中已经稳定了多久（秒）。 */
-	UPROPERTY(Transient, BlueprintReadOnly, Category = "ACT|Turn")
-	float TurnStableTimer = 0.0f;
-
-	/**
-	 * 本帧是否暂停旋转（由 UpdateTurnState 置位，PhysicsRotation 消费）。
-	 *
-	 * 目的：确认窗口的那 1~3 帧如果照常旋转，会吃掉 30~90° 转角，而 pivot clip 的
-	 * root motion 又是从 0 转 180°，结果是"转过头 → 出蒙太奇被拉回来"，肉眼可见地甩一下。
-	 * 只在请求角超过 PivotAngleThreshold 时才冻结 —— 绕圈永远达不到，所以不影响正常转向。
-	 */
-	UPROPERTY(Transient)
-	bool bPivotRotationFrozen = false;
-
-	/** pivot 触发后继续冻结旋转的宽限时间（秒），等蒙太奇的 root motion 真正接管。 */
-	UPROPERTY(Transient)
-	float PivotFreezeTimer = 0.0f;
-
-	/** 朝向是否由动画曲线接管（pivot 状态）。 */
-	UPROPERTY(Transient, BlueprintReadOnly, Category = "ACT|Turn")
-	bool bAnimYawDriven = false;
-
-	/** 动画曲线给出的绝对偏航角（度）。仅在 bAnimYawDriven 为真时有效。 */
-	UPROPERTY(Transient, BlueprintReadOnly, Category = "ACT|Turn")
-	float AnimationDrivenYaw = 0.0f;
-
-	/** 进入动画驱动状态时的胶囊偏航角（度）。偏移量的基准。 */
-	UPROPERTY(Transient)
-	float AnimDrivenEntryYaw = 0.0f;
-
-	/** GT 侧上次看到的序列号，用来判断动画线程是否还在喂值。 */
-	uint32 LastAnimYawSeq = 0;
-
-	/** 距离上次收到新值过了多久（秒）。看门狗用。 */
-	float AnimYawIdleTimer = 0.0f;
-
-	/** 看门狗阈值（秒）。超过这么久没有新值就认为 pivot 状态已经结束、自动交还控制权。 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ACT|Turn", Meta = (ClampMin = 0.05f, ForceUnits = "s"))
-	float AnimYawTimeout = 0.25f;
-
-	/** pivot 冷却剩余时间（秒）。 */
-	UPROPERTY(Transient)
-	float PivotCooldownTimer = 0.0f;
-
-	/** 本帧的转向速度折扣，乘在 MaxWalkSpeed 上。 */
-	UPROPERTY(Transient)
-	float TurnSpeedScale = 1.0f;
 };

@@ -1,48 +1,34 @@
 // ACT 动画实例
 //
-// ================================================================ 实现层归属原则
+// ================================================================ 这个类为什么还活着
 //
-//   动画蓝图节点能做的   → 一律在 ABP 里做（Property Access / Warping / Distance Matching / 数学节点）
-//   节点做不到的         → 才放这里（目前只剩：跨线程安全的蒙太奇播放）
+// 只有一个理由：`BlueprintThreadSafeUpdateAnimation` 的签名里只有 self。
+// 要从 self 走到移动组件，得走 TryGetPawnOwner → Cast<ACharacter> → GetCharacterMovement()，
+// 而 `GetCharacterMovement` **没有** BlueprintThreadSafe 标记，整条链在 WT 上编译不过。
 //
-// 理由：ABP 里改参数不重编译，迭代快；C++ 只在真的出现性能问题（Property Access 拷贝量过大、
-// 线程安全更新超预算）时才接管计算。
+// 所以这里只做一件事：把 Owner 和它的移动组件缓存成指针，给 ABP 一个 GT 侧的便捷入口。
 //
-// 因此这个类**故意做得很薄**，不覆写 NativeThreadSafeUpdateAnimation —— 没有 WT 逻辑。
-// 曾经在这里算过的 Speed / AnimSpeed / StrideScale / OrientationAngle / Lean / LandPredictionAlpha /
-// BrakingDistance 全部下放到 ABP，逐个节点的接法见 Docs/ABP-v1-Wiring.md。
+// ================================================================ 故意不做什么
 //
-// ================================================================ 剩下的唯一职责
+//   不计算任何 Locomotion 数据 —— Speed / AnimSpeed / StrideScale / OrientationAngle / Lean /
+//   LandPredictionAlpha / BrakingDistance 全部在 ABP 里用节点算（Property Access + 数学节点），
+//   改参数不重编译，迭代快。逐个接法见 Docs/ABP-v1-Wiring.md。
 //
-// Montage_Play 会改 MontageInstances 等 UObject 状态，在动画工作线程（WT）上调用是未定义行为。
-// ALS 为此给 FAnimInstanceProxy::PostUpdate 打了补丁；这里用一个 MPSC 队列实现同样语义：
-//   GT 调用 → 立即播；WT 调用 → 入队，下一次 NativeUpdateAnimation 里播。
-// 这是节点做不到的事，也是继承 UAnimInstance 的唯一理由。
+//   不持有任何跨线程状态 —— 曾经有一套「动画曲线写原子槽 → 移动组件在 GT 拉走」的旋转通道，
+//   随着移动组件去掉动画驱动朝向（Docs/Turn-Pivot-CurveDriven-Design.md 附录 B）已经整条失效：
+//   读端 `ConsumeAnimationDrivenYaw` 没了，写端 ABP 也从未调用过 `SetAnimationDrivenYawOffset`。
+//   旋转的权威回到移动组件，动画层只通过下面的 getter 读数据，不再反向写。
 
 #pragma once
-
-#include <atomic>
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
 #include "ACTAnimInstance.generated.h"
 
 class ACharacter;
-class UAnimMontage;
 class UACTCharacterMovementComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogACTAnimInstance, Log, All);
-
-/**
- * 待播放的蒙太奇请求。用于跨线程投递：WT 里（例如动画通知）不能直接调 Montage_Play，
- * 必须排队到 GT。持有 WeakObjectPtr 以避免请求跨帧存活时把 Montage 钉在内存里。
- */
-struct FActPendingMontage
-{
-	TWeakObjectPtr<UAnimMontage> Montage;
-	float PlayRate = 1.0f;
-	float StartPosition = 0.0f;
-};
 
 /**
  * 角色动画实例基类。
@@ -71,72 +57,22 @@ class ACTGAME_API UACTAnimInstance : public UAnimInstance
 public:
 	UACTAnimInstance(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
-	// ================================================================ 便捷访问
+	// ================================================================ 缓存访问
+	//
+	// 这两个是 BlueprintPure，**只能在 GT 上调**（Event Graph 没问题，WT 里不要调）。
+	// 之所以值得存在：ABP 里要拿移动组件做 Cast / 取引用，每帧自己走一遍
+	// GetOwningActor → Cast 既啰嗦又容易写错类型。
 
 	/** 宿主角色。找不到时为 nullptr。 */
 	UFUNCTION(BlueprintPure, Category = "ACT|Anim")
 	ACharacter* GetActCharacter() const { return Character; }
 
-	/** 自己的移动组件。BlueprintPure 只能在 GT 上调（Event Graph 里没问题，WT 里不要调）。 */
+	/** 自己的移动组件。 */
 	UFUNCTION(BlueprintPure, Category = "ACT|Anim")
 	UACTCharacterMovementComponent* GetACTMovement() const { return ACTMovement; }
 
-	// ================================================================ 蒙太奇（线程安全）
-
-	/**
-	 * 播放蒙太奇。可在任意线程调用：
-	 *   - GT 上调用：立即播放，返回蒙太奇时长；
-	 *   - WT 上调用：入队，返回 0，实际播放在下一次 NativeUpdateAnimation 里发生。
-	 */
-	UFUNCTION(BlueprintCallable, Category = "ACT|Montage")
-	float PlayMontageSafe(UAnimMontage* Montage, float PlayRate = 1.0f, float StartPosition = 0.0f);
-
-	/** 强制入队（即使当前在 GT 上）。用于"本帧不要立刻生效"的场合，例如同一帧连发两个动作。 */
-	UFUNCTION(BlueprintCallable, Category = "ACT|Montage")
-	void QueueMontage(UAnimMontage* Montage, float PlayRate = 1.0f, float StartPosition = 0.0f);
-
-	/** 停止当前所有蒙太奇（带淡出）。同上，WT 安全。 */
-	UFUNCTION(BlueprintCallable, Category = "ACT|Montage")
-	void StopMontagesSafe(float BlendOutTime = 0.2f);
-
-	// ================================================================ 动画驱动朝向（线程安全出口）
-	//
-	// 为什么放在 AnimInstance 而不是移动组件：`BlueprintThreadSafeUpdateAnimation` 里能拿到的
-	// 只有 self。要拿到移动组件就得走 TryGetPawnOwner → Cast → GetCharacterMovement，
-	// 而 `GetCharacterMovement` **没有** BlueprintThreadSafe 标记，整条链在 WT 上编译不过 ——
-	// 这就是"没有线程安全的 self 可以赋值"的来源。
-	//
-	// 放在这里之后：WT 写的是自己的原子槽，不碰任何外部对象；移动组件在 GT 上把它拉走。
-	// 好处是全程没有跨对象的 UFUNCTION 调用（ProcessEvent 在 WT 上跑才是真正的风险）。
-
-	/**
-	 * 把动画曲线里的 root 偏航角喂给移动组件。可在 WT 上直接调。
-	 * 传的是**相对进入 pivot 状态时的偏移**（度，带符号），曲线首帧应为 0。
-	 */
-	UFUNCTION(BlueprintCallable, Category = "ACT|Locomotion", meta = (BlueprintThreadSafe))
-	void SetAnimationDrivenYawOffset(float YawOffsetDegrees);
-
-	/** 结束动画驱动。可在 WT 上直接调。 */
-	UFUNCTION(BlueprintCallable, Category = "ACT|Locomotion", meta = (BlueprintThreadSafe))
-	void StopAnimationDrivenYaw();
-
-	// 下面三个只给移动组件在 GT 上拉取，不要在蓝图里用（没有 BlueprintPure，不进节点面板）。
-
-	bool IsAnimYawDriveActive() const { return AnimYawActiveSlot.load(std::memory_order_relaxed); }
-	float GetAnimYawDriveOffset() const { return AnimYawOffsetSlot.load(std::memory_order_relaxed); }
-	uint32 GetAnimYawDriveSeq() const { return AnimYawSeq.load(std::memory_order_relaxed); }
-
 protected:
-	// ================================================================ 生命周期
-
 	virtual void NativeInitializeAnimation() override;
-
-	/** GT。唯一的职责是 flush 蒙太奇队列 —— 这里不拷贝任何 Locomotion 数据。 */
-	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
-
-	// ================================================================ 内部
-
-	void FlushPendingMontages();
 
 	// ================================================================ 缓存
 
@@ -145,20 +81,4 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UACTCharacterMovementComponent> ACTMovement;
-
-	// ================================================================ 队列
-
-	/** 蒙太奇请求队列。Mpsc = 多生产者（任意工作线程）单消费者（GT）。 */
-	TQueue<FActPendingMontage, EQueueMode::Mpsc> PendingMontages;
-
-	TQueue<float, EQueueMode::Mpsc> PendingStopRequests;
-
-	// ================================================================ 动画驱动朝向的原子槽
-	//
-	// 用 std::atomic 而不是 UPROPERTY：这两个槽会被动画工作线程写。
-	// UPROPERTY 的写入会碰到 UObject 内部状态（GC 列表、属性链），在 WT 上做就是数据竞争。
-
-	std::atomic<float> AnimYawOffsetSlot{0.0f};
-	std::atomic<bool> AnimYawActiveSlot{false};
-	std::atomic<uint32> AnimYawSeq{0};
 };
