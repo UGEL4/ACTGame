@@ -62,6 +62,31 @@ enum class EACTRotationMode : uint8
 };
 
 /**
+ * 旋转权威：胶囊的朝向由谁说话。
+ *
+ * 两个模式是互斥的，切换通过 `UACTCharacterMovementComponent::SetRotationAuthority`。
+ * 之所以要这个开关：日常移动用引擎自带机制最省心（`bOrientRotationToMovement` + `RotationRate`，
+ * 免费拿到重力方向、非竖直朝向、网络同步这些边角）；转身/pivot 这类"节奏必须跟动画走"的场景
+ * 则需要动画曲线说了算，引擎的恒定角速度做不到。
+ */
+UENUM(BlueprintType)
+enum class EACTRotationAuthority : uint8
+{
+	/**
+	 * 引擎自带：`bOrientRotationToMovement`（朝输入方向）或 `bUseControllerDesiredRotation`（朝相机），
+	 * 用 `RotationRate.Yaw` 限速。目标是 `Acceleration`，松手时保持朝向不动。
+	 */
+	MovementComponent,
+
+	/**
+	 * 动画曲线：ABP 每帧 `PushYawCurveOffset` 推一个偏航偏移，CMC 直接落位，**不经过 RotationRate**。
+	 * 旋转的时序与角度完全由曲线决定 —— 这是 pivot / turn-in-place 需要的。
+	 * 有超时保护：`AnimationYawTimeout` 内没收到新样本就自动回 MovementComponent。
+	 */
+	AnimationCurve
+};
+
+/**
  * 移动组件每帧算好的状态。由组件持有（`UACTCharacterMovementComponent::LocomotionState`），
  * 动画蓝图通过 **Property Access** 直接读，不再由动画实例拷贝一份。
  *

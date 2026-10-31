@@ -30,3 +30,39 @@ void UACTAnimInstance::NativeInitializeAnimation()
 			*GetNameSafe(this));
 	}
 }
+
+// ================================================================ 偏航曲线通道（跨线程）
+
+void UACTAnimInstance::PushYawCurveOffset(float OffsetDegrees)
+{
+	// ⚠️ 这个函数会在**动画工作线程**上执行（BlueprintThreadSafeUpdateAnimation / 状态函数）。
+	// 只写下面三行原子：不读 Character / ACTMovement、不写 UPROPERTY、不打日志。
+	// 任何一个都会变成数据竞争，症状是偶发数值跳变，几乎查不出来。
+	//
+	// 顺序有讲究：先写载荷，再 release 递增序号。GT 侧 acquire 读到新序号时，
+	// 载荷一定已经可见 —— 反过来（先加序号）会读到上一帧的偏移。
+	YawCurveOffset.store(OffsetDegrees, std::memory_order_relaxed);
+	YawCurveActive.store(true, std::memory_order_relaxed);
+	YawCurveSeq.fetch_add(1, std::memory_order_release);
+}
+
+void UACTAnimInstance::ClearYawCurveOffset()
+{
+	// 同上，WT 侧。真正的收尾（退回引擎驱动）在 CMC 的 ApplyAnimationDrivenYaw 里做。
+	YawCurveActive.store(false, std::memory_order_release);
+}
+
+bool UACTAnimInstance::ReadYawCurve(float& OutOffsetDegrees, uint32& OutSeq) const
+{
+	// GT 侧。先读序号再读载荷：序号变了说明载荷也写好了（见 Push 里的顺序说明）。
+	OutSeq = YawCurveSeq.load(std::memory_order_acquire);
+	OutOffsetDegrees = YawCurveOffset.load(std::memory_order_relaxed);
+	return YawCurveActive.load(std::memory_order_relaxed);
+}
+
+void UACTAnimInstance::ResetYawCurve()
+{
+	// 不动序号：调用方（CMC）会紧接着用 GetYawCurveSeq() 对齐，这样下一个新样本一定能被识别。
+	YawCurveOffset.store(0.0f, std::memory_order_relaxed);
+	YawCurveActive.store(false, std::memory_order_relaxed);
+}

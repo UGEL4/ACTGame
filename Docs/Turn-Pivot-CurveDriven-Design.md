@@ -913,3 +913,292 @@ Output: Binaries/Win64/UnrealEditor-ACTGame.dll (1,842,688 bytes)
 
 从附录 A 起算的累计：`ACTCharacterBase` 726 → 489，`ACTAnimInstance` 296 → 116，
 移动组件 1111 → 678，三个类合计 **2133 → 1283（-850，-40%）**。
+
+---
+
+## 附录 D · 旋转权威双模式（2026-10-29）
+
+> 前一轮的结论是"手写 `PhysicsRotation` 是复杂化了，应该用引擎自带的 `RotationRate`"。
+> 但转身/pivot 这类场景需要**曲线决定节奏**，引擎的恒定角速度做不到。所以不是一个替换另一个，
+> 而是做成可切换的两条路。
+
+### D.1 两种权威
+
+| | `MovementComponent` | `AnimationCurve` |
+|---|---|---|
+| 谁决定朝向 | 引擎 `PhysicsRotation` | CMC `ApplyAnimationDrivenYaw` |
+| 目标从哪来 | `Acceleration`（输入加速度方向） | ABP 推的偏航偏移 |
+| 用什么限速 | `RotationRate.Yaw` | **不限速**，曲线每帧值就是该处的角度 |
+| 松手时 | **朝速度方向继续转**（自己实现的兜底，见 D.8；引擎原版这里会直接停） | 继续按曲线走，直到 `Clear` 或超时 |
+| 适用 | 日常移动、自由跑动 | pivot、turn-in-place、折返 |
+| 免费拿到 | ——（引擎那条路已关，原因见 D.8） | 任何节奏（含"先慢后快再停"） |
+
+切换入口只有一个：`SetRotationAuthority(EACTRotationAuthority)`。切到 `AnimationCurve` 内部直接调
+`BeginAnimationDrivenYaw()`，不会出现"枚举是 A 但状态是 B"的中间态。
+
+### D.2 曲线模式的完整链路
+
+```
+ABP 的 Turn 状态（WT）                    CMC（GT）
+  On State Update:
+    PushYawCurveOffset(Pivot_Yaw * k)  ──►  atomic {Offset, Active, Seq++}
+                                              │
+                                              ▼  PhysicsRotation 每帧
+                                           ReadYawCurve(Offset, Seq)
+                                              │
+                                    Seq 变了？ ──是──► AnimDrivenYaw = EntryYaw + Offset
+                                              │              MoveUpdatedComponent(落位)
+                                             否
+                                              ▼
+                                    静默计时 → 超过 AnimationYawTimeout
+                                              │
+                                              ▼
+                                    EndAnimationDrivenYaw()（退回引擎）
+```
+
+**为什么必须有超时**：上一轮删掉的那套通道就是死在"没人兜底"上——ABP 一旦忘了 Clear
+（状态机提前退出、Notify 没触发、蓝图被改坏），角色会永远卡在曲线最后一帧的朝向。
+`AnimationYawTimeout`（默认 0.5s）把它变成一个日志警告 + 自动恢复，而不是一个查不出来的 bug。
+
+**为什么用序号而不是 bool**：`PhysicsRotation` 和动画更新不在同一个线程、也不一定同频。
+只用 `Active` 的话，GT 会在曲线没更新的帧上重复应用同一个偏移——看起来没坏，但如果同一帧
+`PhysicsRotation` 被调用两次（`PerformMovement` 的子步），会重复落位。序号让"没有新数据"
+这件事是显式的。
+
+**内存序**：`Push` 里先写 `Offset`、再 `release` 递增 `Seq`；`Read` 里先 `acquire` 读 `Seq`、
+再读 `Offset`。反过来会导致 GT 读到"新序号 + 旧偏移"，表现为偶尔落后一帧。
+
+### D.3 三条 API 的语义边界
+
+| API | 做什么 | 不该用来做 |
+|---|---|---|
+| `SetRotationAuthority` | 切换驱动方式 | —— |
+| `BeginAnimationDrivenYaw` | 以**当前朝向**为基准，开始接收曲线 | 不要传"目标角"进来，那是 `SnapYawTo` |
+| `EndAnimationDrivenYaw` | 退回引擎，朝向不跳（残差由一次 `FixedTurn` 抹掉） | 不要用它"停在某个角"，用 `SnapYawTo` |
+| `SnapYawTo(float)` | 硬设朝向，立刻生效 | 曲线模式下会同时搬动基准，这是有意的 |
+| `SetAutoYawUpdate(false)` | 引擎模式下完全停转（攻击锁向） | 曲线模式下无意义（那边本来就不看它） |
+
+`RotationRate.Yaw` 是运行时改速度的唯一入口。`VelocityDirectionInterpSpeed` /
+`LookingDirectionInterpSpeed` 只是它的两个预设值，由 `ApplyRotationSettingsToEngine` 在
+`SetRotationMode` / `SetRotationAuthority` / `SetAutoYawUpdate` 时同步过去。
+
+### D.4 行为变化（相对上一版手写实现）
+
+1. **松手滑行时仍然朝速度方向续转**（见 D.8）。这一条在最初切到引擎实现时被我误判为
+   "顺手修正的偏离"，实测后确认它其实是手感的关键，已经改回来。
+2. **斜坡 / 自定义重力 / 非竖直朝向的边角交给引擎**，我们不再自己处理。
+3. **`bOrientRotationToMovement` 与 `bUseControllerDesiredRotation` 由 `ApplyRotationSettingsToEngine` 独占写入**，
+   别在别处直接改这两个 bool，否则会被下一次 `SetRotationMode` 覆盖。
+4. **`SetAutoYawUpdate` 语义变窄**：旧版是"目标角不刷新但仍朝旧目标转"，新版是"引擎完全不转"。
+   `BP_PC_01` 里那一处调用行为会更干脆（直接停转），如果原来依赖"转到旧目标"需要改回曲线模式。
+
+### D.5 删除项
+
+| 删除 | 理由 |
+|---|---|
+| `PhysicsRotation` 手写实现（51 行） | `MovementComponent` 模式转调 `Super`，曲线模式只剩落位 |
+| `UpdateDesiredYaw()`（39 行） | 目标角由引擎从 `Acceleration` 现算，或由 ABP 推 |
+| `TargetYawAngle` / `CurrentYawAngle` / `bInstantYaw` | 不再自己维护一份朝向状态，也就没有了"1° 漂移修补"和 RM 缓存同步 |
+| `SetTargetYawAngle` / `GetTargetYawAngle` | 硬设朝向统一走 `SnapYawTo` |
+| `SetRotationInterpSpeed` / `GetRotationInterpSpeed` / `RotationInterpSpeedOverride` | 直接写 `RotationRate.Yaw`，不要再套一层 |
+| `MinSpeedToOrient` | 引擎自己判断 `Acceleration` 是否为零 |
+
+组件从 678 行到 **835 行**（-47 行删掉的手写逻辑 + 约 200 行新增的曲线通道与超时兜底）。
+**行数涨了**，但"自己的朝向状态机"这一段没有了：两条路径各自都是线性的，不再有"四个早退分支
+互相让位 + 1° 漂移修补 + RM 缓存同步"那套互相牵制的东西。
+
+### D.6 ABP 侧接线（实现曲线模式时才需要）
+
+```
+Turn 状态：
+  On State Enter   → BeginAnimationDrivenYaw（或者由游戏逻辑在进入前调 SetRotationAuthority）
+  On State Update  → PushYawCurveOffset( Pivot_Yaw 曲线值 * k )
+  On State Exit    → ClearYawCurveOffset
+```
+
+`k` 与 `Pivot_Yaw` 的定义见 §4.2。当前这一步只做了通道，**曲线烘焙与 `k` 缩放还没做**，
+所以 `AnimationCurve` 模式现在只能用来验证链路通不通（推一个线性值就能看到胶囊平滑转过去）。
+
+> 注意：旧的 `StopAnimationDrivenYaw` 已改名为 `ClearYawCurveOffset`。如果 `ABP_PC_01` 里
+> 还留着旧节点，会编译报错，删掉即可（那个节点本来也没有对应的推入端，是空转的）。
+
+### D.7 编译验证
+
+```
+Build.bat ACTGameEditor Win64 Development -Project=...\ACTGame.uproject -NoUBA -NoLinkerDebugInfo
+Result: Succeeded
+Binaries/Win64/UnrealEditor-ACTGame.dll   1,859,072 bytes   14:10
+```
+
+**遇到并修掉的错误**：`ACTCharacterMovementComponent.cpp(492): error C2039: "GetCurrentAcceleration"
+不是 "ACharacter" 的成员`。`GetCurrentAcceleration()` 是 `UCharacterMovementComponent` 的方法，
+不是 `ACharacter` 的。因为代码本来就在 CMC 里，直接调 `GetCurrentAcceleration()` 即可 ——
+而且这样比绕 `CharacterOwner->GetCharacterMovement()->...` 更准确，读的就是引擎
+`PhysicsRotation` 用的那同一个 `Acceleration`。
+
+> 排查提示：`-NoUBA` 模式下 UBT **不转发 cl.exe 的输出**，失败时只报
+> `Result: Failed (OtherCompilationError)` 而看不到具体错误。这时用
+> `-SingleFile=<文件名>` 再跑一次，UBT 就会把 `error Cxxxx` 直接打出来。
+> 不要手动拿 `.rsp` 去跑 cl.exe —— 那会用当前 shell 的工具链，和 UBT 的
+> `14.50.35739` 对不上，必然报 `C1853 PCH 版本不匹配`，是假错误。
+
+### D.8 修正：引擎默认实现做不到"点按松手后继续转"
+
+> ⚠️ 本节的修法**不完整**，实测点按仍只能转 18°。根因与最终修法见 **D.9**。
+
+实测对比后发现 `MovementComponent` 模式的手感变差了。原因是引擎的这条分支：
+
+```cpp
+FRotator UCharacterMovementComponent::ComputeOrientToMovementRotation(...)
+{
+    if (Acceleration.SizeSquared() < UE_KINDA_SMALL_NUMBER)
+    {
+        if (bHasRequestedVelocity && RequestedVelocity.SizeSquared() > UE_KINDA_SMALL_NUMBER)
+        {
+            return RequestedVelocity.GetSafeNormal().Rotation();   // 只服务 AI 的 RequestDirectMove
+        }
+        return CurrentRotation;     // ← 玩家松手就走这里：不转了
+    }
+    return Acceleration.GetSafeNormal().Rotation();
+}
+```
+
+**玩家输入不经过 `RequestedVelocity`**（那是 `RequestDirectMove` / 寻路用的），所以只要松手，
+`Acceleration` 归零，引擎立刻放弃旋转。
+
+每帧最大转角是 `RotationRate.Yaw × dt` = 540 × 0.0167 ≈ **9°**。点按通常只持续 1~2 帧 →
+**只能转 9~18° 就停住**，而玩家的意图是"转过去"。这就是手感差异的全部原因。
+
+旧实现在松手后退化为用 `Velocity` 方向当目标，只要惯性还在（速度 > `MinSpeedToOrient`），
+角色就会继续把剩余的角度转完。
+
+#### 修法：保留 `RotationRate`，自己选目标
+
+`PhysicsRotation` 的 `MovementComponent` 分支不再调 `Super`，改成：
+
+```cpp
+if (!bAutoUpdateYaw) return;
+const float Speed = RotationRate.Yaw;          // 唯一的速度入口，0 = 冻结
+if (Speed <= 0.0f) return;
+
+float DesiredYaw;
+if (RotationMode == LookingDirection)      DesiredYaw = Controller->GetControlRotation().Yaw;
+else if (!Acceleration.IsNearlyZero())     DesiredYaw = Acceleration.ToOrientationRotator().Yaw;
+else if (Velocity.SizeSquared2D() > MinSpeedToOrient²) DesiredYaw = Velocity.ToOrientationRotator().Yaw;
+else if (bHasRequestedVelocity && ...)     DesiredYaw = RequestedVelocity.ToOrientationRotator().Yaw;
+else return;                                   // 保持朝向，别抖
+
+NewYaw = FMath::FixedTurn(CurrentYaw, DesiredYaw, Speed * DeltaTime);
+MoveUpdatedComponent(ZeroVector, Quat(0, NewYaw, 0), false);
+```
+
+三件事：
+
+1. **顺序是「相机 → 输入 → 速度 → 寻路请求 → 保持」**，和 `UpdateLocomotionState` 里算
+   `LocomotionState.YawOffset` 的顺序**必须一致**，否则动画会去补一个物理已经在补的差。
+2. **`bHasRequestedVelocity` 分支保留了**，AI 寻路不会退化。
+3. **速度仍然是 `RotationRate.Yaw`**，没有再引入第二个配置项。想调速就直接写 `RotationRate.Yaw`。
+
+#### 代价
+
+`bOrientRotationToMovement` / `bUseControllerDesiredRotation` 在构造函数里恒为 `false`，
+引擎顺带处理的 `HasCustomGravity`、`ShouldRemainVertical()`、`bPreventNonVerticalOrientationBlock`
+不再参与。本项目的角色恒竖直、没有自定义重力，这三项用不上；将来真要接"磁力靴/异星重力"，
+得在这里补。
+
+`ApplyRotationSettingsToEngine` 相应改名为 `RefreshRotationRate` —— 它现在只做一件事：
+按 `RotationMode` 把 `RotationRate.Yaw` 刷成对应档位。
+
+#### 验证
+
+```
+Build.bat ACTGameDevelopment ... -NoUBA -NoLinkerDebugInfo
+Result: Succeeded
+```
+
+手感验证：站定 → 轻点一下"左"方向 0.05 秒 → 松手。期望角色继续左转直到对准，而不是
+只挪 9° 就停。再对比 `RotationRate.Yaw` 调到 1080 时的转速差异。
+
+### D.9 再修正：目标角必须是**持久状态**，不能每帧现算
+
+D.8 把"松手续转"挂在 `Velocity` 上，实测仍然不达标：点按 A 只转约 18°，到不了 90°。
+
+数值推演（Run 档，60fps）：
+
+| 量 | 值 |
+|---|---|
+| `MaxAcceleration` = 500 / 0.35 | 1429 cm/s² |
+| 按 1 帧获得的速度 | 23.8 cm/s |
+| `BrakingDecelerationWalking` = 500 / 0.30 | 1667 cm/s² |
+| 这个速度衰减到 0 需要 | **14 ms ≈ 0.9 帧** |
+| 每帧最大转角 = 540 × 0.0167 | 9° |
+| 按住 1 帧 + 松手后 1 帧 | **18°** |
+
+结论：**靠速度兜底根本没时间转**。速度比转身快一个数量级，松手后目标立刻消失。
+
+真正的根因是 D.8 把目标做成了**无状态**的（每帧从输入/速度现算）。而改造前那版是：
+
+```cpp
+// 改造前（正确）
+if (InputVector.SizeSquared2D() > 0.01f)        TargetYawAngle = Input方向;
+else if (Velocity.SizeSquared2D() > 阈值²)      TargetYawAngle = Velocity方向;
+// 两者都没有：什么都不做 —— 目标角保持上一次的值
+```
+
+`TargetYawAngle` 是成员变量。按一下 A，它变成 90°；松手后输入没了、速度也没了，
+**但目标还留着**，`PhysicsRotation` 继续朝它转，直到对准。点按 S 同理，目标 180°，
+转满 180°。
+
+#### 最终实现
+
+1. `TargetYawAngle` 恢复为 `UPROPERTY(Transient)` 持久状态。
+2. `UpdateDesiredYaw()` 在 `Super::TickComponent` **之前**调用（同旧版），
+   顺序：相机方向 → 输入 → 寻路请求 → 速度 → **保持**。
+3. `PhysicsRotation` 只做一件事：
+
+```cpp
+const float NewYaw = FMath::FixedTurn(CurrentYaw, TargetYawAngle, RotationRate.Yaw * DeltaTime);
+MoveUpdatedComponent(FVector::ZeroVector, FQuat(FRotator(0.0f, NewYaw, 0.0f)), false);
+```
+
+速度仍然是 `RotationRate.Yaw`（引擎那个字段），没有第二套配置。
+
+#### 四个必须同步目标角的地方
+
+漏掉任何一个都会"转过去又被转回来"：
+
+| 位置 | 做什么 | 漏了会怎样 |
+|---|---|---|
+| `BeginPlay` | `TargetYawAngle = 当前朝向` | 第一帧猛地转向世界 0° |
+| `SnapYawTo` | `TargetYawAngle = 新朝向` | 折返瞬转变成"抖一下又转回来" |
+| `BeginAnimationDrivenYaw` | 停在进入时的朝向 | 曲线结束后转回进入前的旧目标 |
+| `EndAnimationDrivenYaw` | 对齐到曲线转完的实际朝向 | 同上 |
+
+#### 与曲线模式的共存
+
+`PhysicsRotation` 的分叉只看 `RotationAuthority`，两个模式互不干扰：
+
+```
+AnimationCurve    → ApplyAnimationDrivenYaw（直接落位，不看 TargetYawAngle）
+MovementComponent → FixedTurn(TargetYawAngle, RotationRate.Yaw * dt)
+```
+
+`UpdateDesiredYaw` 在曲线模式下仍然会跑（结果不参与旋转），这样切回引擎模式时
+目标角已经是最新的，不会有一个"追旧目标"的过渡帧。
+
+`LocomotionState.YawOffset` 直接取两者之一，和 `PhysicsRotation` 天然同源：
+
+```cpp
+const float DesiredYaw = (RotationAuthority == AnimationCurve) ? AnimDrivenYaw : TargetYawAngle;
+```
+
+#### 验证
+
+```
+Result: Succeeded
+```
+
+- 点按 A（0.05s）→ 期望转到左侧 90°（相对当前朝向）
+- 点按 S → 期望转满 180°
+- 长按 W 跑动中轻点 A → 期望先朝左再回正（输入消失后目标被新输入覆盖）
+- 站着不动时不抖（三个来源都为空 → 目标保持不变）

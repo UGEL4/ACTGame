@@ -1,12 +1,15 @@
 // ACT 动画实例
 //
-// ================================================================ 这个类为什么还活着
+// ================================================================ 两个职责，都是"节点做不到"的
 //
-// 只有一个理由：`BlueprintThreadSafeUpdateAnimation` 的签名里只有 self。
-// 要从 self 走到移动组件，得走 TryGetPawnOwner → Cast<ACharacter> → GetCharacterMovement()，
-// 而 `GetCharacterMovement` **没有** BlueprintThreadSafe 标记，整条链在 WT 上编译不过。
+//   1. 缓存访问：`BlueprintThreadSafeUpdateAnimation` 的签名里只有 self，要从 self 走到移动组件
+//      得 TryGetPawnOwner → Cast<ACharacter> → GetCharacterMovement()，而 GetCharacterMovement
+//      **没有** BlueprintThreadSafe 标记，整条链在 WT 上编译不过。所以这里缓存两个指针。
 //
-// 所以这里只做一件事：把 Owner 和它的移动组件缓存成指针，给 ABP 一个 GT 侧的便捷入口。
+//   2. 偏航曲线通道：曲线模式的旋转由 ABP 驱动，ABP 算完的偏移要交给移动组件。
+//      但 ABP 的线程安全更新跑在动画工作线程上，碰 `UPROPERTY` 会碰 GC/属性链 —— 那是数据竞争。
+//      所以用两个 atomic 槽 + 一个序号做跨线程投递，GT 侧的移动组件按序号取走最新样本。
+//      这条通道是**有意存在**的，不是历史残留：断掉任何一端，曲线模式就失效。
 //
 // ================================================================ 故意不做什么
 //
@@ -14,12 +17,12 @@
 //   LandPredictionAlpha / BrakingDistance 全部在 ABP 里用节点算（Property Access + 数学节点），
 //   改参数不重编译，迭代快。逐个接法见 Docs/ABP-v1-Wiring.md。
 //
-//   不持有任何跨线程状态 —— 曾经有一套「动画曲线写原子槽 → 移动组件在 GT 拉走」的旋转通道，
-//   随着移动组件去掉动画驱动朝向（Docs/Turn-Pivot-CurveDriven-Design.md 附录 B）已经整条失效：
-//   读端 `ConsumeAnimationDrivenYaw` 没了，写端 ABP 也从未调用过 `SetAnimationDrivenYawOffset`。
-//   旋转的权威回到移动组件，动画层只通过下面的 getter 读数据，不再反向写。
+//   不解释语义 —— "什么时候开始转、转多少度、转多快"全在 ABP 的曲线与 Notify 里。
+//   这个类只搬数字：进来一个 float，出去一个 float，中间不判断。
 
 #pragma once
+
+#include <atomic>
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
@@ -60,8 +63,6 @@ public:
 	// ================================================================ 缓存访问
 	//
 	// 这两个是 BlueprintPure，**只能在 GT 上调**（Event Graph 没问题，WT 里不要调）。
-	// 之所以值得存在：ABP 里要拿移动组件做 Cast / 取引用，每帧自己走一遍
-	// GetOwningActor → Cast 既啰嗦又容易写错类型。
 
 	/** 宿主角色。找不到时为 nullptr。 */
 	UFUNCTION(BlueprintPure, Category = "ACT|Anim")
@@ -70,6 +71,38 @@ public:
 	/** 自己的移动组件。 */
 	UFUNCTION(BlueprintPure, Category = "ACT|Anim")
 	UACTCharacterMovementComponent* GetACTMovement() const { return ACTMovement; }
+
+	// ================================================================ 偏航曲线通道（跨线程）
+	//
+	// 用法（ABP 侧，`Turn` 状态里）：
+	//   On State Update  → PushYawCurveOffset(Pivot_Yaw 曲线值 * k)
+	//   On State Exit    → ClearYawCurveOffset()
+	//
+	// 通道本身不做超时判断 —— 那在 CMC（`AnimationYawTimeout`）。这样"多久算过期"是
+	// 物理侧的参数，动画侧只负责推。
+
+	/**
+	 * 推一个偏航偏移（度，带符号，正 = 向左）。可在 WT 上直接调。
+	 *
+	 * 传的是**相对进入曲线模式那一刻朝向**的偏移，不是绝对角 ——
+	 * 所以曲线首帧必须是 0，否则第一帧会跳。
+	 */
+	UFUNCTION(BlueprintCallable, Category = "ACT|Locomotion", meta = (BlueprintThreadSafe))
+	void PushYawCurveOffset(float OffsetDegrees);
+
+	/** 结束推送。可在 WT 上直接调。之后 CMC 会退回引擎驱动（不必等超时）。 */
+	UFUNCTION(BlueprintCallable, Category = "ACT|Locomotion", meta = (BlueprintThreadSafe))
+	void ClearYawCurveOffset();
+
+	// 下面三个只给移动组件在 GT 上拉取，不要在蓝图里用（不进节点面板）。
+
+	/** 原子地读出当前样本。返回 false 表示通道已关闭。 */
+	bool ReadYawCurve(float& OutOffsetDegrees, uint32& OutSeq) const;
+
+	/** 清空样本（进入曲线模式时调，避免吃到上一轮的残留）。不改序号。 */
+	void ResetYawCurve();
+
+	uint32 GetYawCurveSeq() const { return YawCurveSeq.load(std::memory_order_relaxed); }
 
 protected:
 	virtual void NativeInitializeAnimation() override;
@@ -81,4 +114,17 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UACTCharacterMovementComponent> ACTMovement;
+
+	// ================================================================ 偏航通道的原子槽
+	//
+	// 用 std::atomic 而不是 UPROPERTY：这两个槽会被动画工作线程写。
+	// UPROPERTY 的写入会碰到 UObject 内部状态（GC 列表、属性链），在 WT 上做就是数据竞争，
+	// 症状是偶发数值跳变，几乎查不出来。
+
+	std::atomic<float> YawCurveOffset{0.0f};
+
+	/** 序号：每推一帧 +1。GT 侧靠它判断"这帧有没有新数据"，避免重复应用同一帧的值。 */
+	std::atomic<uint32> YawCurveSeq{0};
+
+	std::atomic<bool> YawCurveActive{false};
 };
